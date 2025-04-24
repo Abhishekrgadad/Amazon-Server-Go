@@ -16,7 +16,7 @@
     socket.onmessage = function(event) {
       const message = event.data;
       if (Notification.permission === "granted") {
-        new Notification("📦 Order Update", {
+        new Notification("Order Update", {
           body: message,
           icon: "https://cdn-icons-png.flaticon.com/512/1170/1170576.png"
         });
