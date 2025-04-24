@@ -1,0 +1,3 @@
+* update the code to auto update the stocks available in products.
+* update the structure.go file of orders and remove the cartitems and cartitemresponse etc.
+*

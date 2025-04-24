@@ -1,0 +1,228 @@
+package product
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log"
+	"time"
+
+	"server/config"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
+
+// Add Product
+func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Check if the product already exists
+	var existingProduct Product
+	err := collection.FindOne(ctx, bson.M{"name": product.Name}).Decode(&existingProduct)
+	if err == nil {
+		return nil, fmt.Errorf("product already exists")
+	}
+
+	// Insert product into database
+	result, err := collection.InsertOne(ctx, product)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add product")
+	}
+
+	return result, nil
+}
+
+// Update Product
+func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid product ID: %v", err)
+	}
+
+	product.UpdatedAt = time.Now().Format(time.RFC3339)
+	updateResult, err := collection.UpdateOne(
+		ctx,
+		bson.M{"_id": objectID},
+		bson.M{"$set": product},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update product: %v", err)
+	}
+	return updateResult, nil
+}
+
+func DeleteProduct(id string) (*mongo.DeleteResult, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid product ID: %v", err)
+	}
+
+	deleteResult, err := collection.DeleteOne(ctx, bson.M{"_id": objectID})
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete product: %v", err)
+	}
+	return deleteResult, nil
+}
+
+// Get Products
+func GetProducts(page int) ([]Product, int64, int, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	limit := 10
+	skip := int64((page - 1) * limit)
+	limitInt64 := int64(limit)
+
+	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
+	}
+	// pagination
+	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
+		Skip:  &skip,
+		Limit: &limitInt64,
+	})
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	// Store products
+	var products []Product
+	if err = cursor.All(ctx, &products); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to parse data: %v", err)
+	}
+
+	// Calculate total pages
+	totalPages := int(totalCount / int64(limit))
+	if totalCount%int64(limit) != 0 {
+		totalPages++
+	}
+
+	return products, totalCount, totalPages, nil
+}
+
+// Get Product by ID
+func GetProductByID(id string) (*Product, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Convert product ID to ObjectID
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, fmt.Errorf("invalid product ID: %v", err)
+	}
+
+	// Find product by ID
+	var product Product
+	err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&product)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("product not found")
+		}
+		return nil, fmt.Errorf("failed to fetch product: %v", err)
+	}
+	return &product, nil
+}
+
+func GetActiveProducts() ([]Product, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Ensure proper querying for visibility
+	filter := bson.M{"visibility": bson.M{"$eq": true}}
+
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch products: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	var products []Product
+	if err = cursor.All(ctx, &products); err != nil {
+		return nil, fmt.Errorf("failed to parse product data: %v", err)
+	}
+
+	return products, nil
+}
+
+func GetInActiveProducts() ([]Product, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Ensure proper querying for visibility
+	filter := bson.M{"visibility": bson.M{"$eq": false}}
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch products: %v", err)
+	}
+	defer cursor.Close(ctx)
+	var products []Product
+	if err = cursor.All(ctx, &products); err != nil {
+		return nil, fmt.Errorf("failed to parse product data: %v", err)
+	}
+	return products, nil
+}
+
+func FilteredProducts(name string,category, brand string, minPrice, maxPrice float64) ([]Product, error) {
+	collection := config.DB.Collection("products")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Build filter dynamically
+	filter := bson.M{"visibility":true}
+
+	if category != "" {
+		filter["category"] = category
+	}
+	if brand != "" {
+		filter["brand"] = brand
+	}
+	if name != "" {
+		// Use regex for case-insensitive search
+		filter["name"] = bson.M{"$regex": name, "$options": "i"}
+	}
+	if minPrice > 0 && maxPrice > 0 {
+		filter["price"] = bson.M{"$gte": minPrice, "$lte": maxPrice}
+	} else if minPrice > 0 {
+		filter["price"] = bson.M{"$gte": minPrice}
+	} else if maxPrice > 0 {
+		filter["price"] = bson.M{"$lte": maxPrice}
+	}
+
+	// Fetch products from MongoDB
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		log.Printf("Error fetching products: %v", err)
+		return nil, fmt.Errorf("database query failed")
+	}
+	defer cursor.Close(ctx)
+
+	var products []Product
+	if err := cursor.All(ctx, &products); err != nil {
+		log.Printf("Error decoding products: %v", err)
+		return nil, fmt.Errorf("failed to parse product data")
+	}
+
+	if len(products) == 0 {
+		return nil, fmt.Errorf("no products found matching the criteria")
+	}
+	return products, nil
+}

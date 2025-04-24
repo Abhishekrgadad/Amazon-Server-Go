@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>WebSocket Order Notification</title>
+</head>
+<body>
+  <h1>Listening for Order Notifications...</h1>
+
+  <script>
+    if ("Notification" in window && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+
+    const socket = new WebSocket("ws://localhost:3000/ws");
+
+    socket.onmessage = function(event) {
+      const message = event.data;
+      if (Notification.permission === "granted") {
+        new Notification("📦 Order Update", {
+          body: message,
+          icon: "https://cdn-icons-png.flaticon.com/512/1170/1170576.png"
+        });
+      } else {
+        alert(message);
+      }
+    };
+  </script>
+</body>
+</html>
