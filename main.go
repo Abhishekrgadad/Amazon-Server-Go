@@ -18,7 +18,7 @@ func main() {
 	}
 
 	config.ConnectDatabase()
-	// config.ConnectRedis()
+	config.ConnectRedis()
 	app := fiber.New()
 	
 	go websocket.StartBroadcast()

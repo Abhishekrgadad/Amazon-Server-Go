@@ -3,10 +3,15 @@ package product
 import (
 	"server/errors"
 	"strconv"
+	"time"
+	"context"
+
+	"server/config"
 
 	"github.com/gofiber/fiber/v2"
 )
 
+var Ctx = context.Background()
 // Function to add a product
 func AddProductHandler(c *fiber.Ctx) error {
 	var product Product
@@ -31,6 +36,7 @@ func AddProductHandler(c *fiber.Ctx) error {
 	})
 }
 
+
 // Function to view products
 func GetProductsHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page") // Get the page parameter from URL
@@ -41,10 +47,28 @@ func GetProductsHandler(c *fiber.Ctx) error {
 		page = 1 // Default to page 1 if page parameter is invalid
 	}
 
+	// Check Redis cache for products
+	cacheKey := "products:page:" + strconv.Itoa(page)
+	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	if err == nil {
+		// Return cached products
+		return c.JSON(fiber.Map{
+			"data":         cachedProducts,
+			"source":       "cache",
+			"current_page": page,
+		})
+	}
+
 	// Fetch Products with Pagination
 	products, totalCount, totalPages, err := GetProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
+	}
+
+	// Cache the products in Redis
+	err = config.RedisClient.Set(Ctx, cacheKey, products, time.Minute*10).Err()
+	if err != nil {
+		return errors.InternalServerError(c, "Failed to cache products")
 	}
 
 	// Return Products and Pagination Info
