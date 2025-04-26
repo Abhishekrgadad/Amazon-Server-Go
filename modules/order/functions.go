@@ -6,8 +6,8 @@ import (
 	"server/config"
 	"server/modules/auth"
 	"server/modules/cart"
-	"server/modules/product"
 	"server/modules/coupons"
+	"server/modules/product"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -20,7 +20,6 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Fetch Cart
 	cartdata, err := GetCartByID(cartID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch cart: %v", err)
@@ -28,20 +27,17 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	if len(cartdata.Items) == 0 {
 		return nil, fmt.Errorf("cart is empty")
 	}
-
 	totalPrice := 0.0
-	var updatedItems []CartItemResponse
 
+	var updatedItems []CartItemResponse
 	for _, item := range cartdata.Items {
 		var product product.Product
 		err := config.DB.Collection("products").FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch product details: %v", err)
 		}
-
 		subTotal := product.Price * float64(item.Quantity)
 		totalPrice += subTotal
-
 		updatedItem := CartItemResponse{
 			ProductID:   item.ProductID,
 			ProductName: product.Name,
@@ -60,7 +56,6 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	if address == "" {
 		orderAddress = user.ShippingAddress
 	}
-
 	var discount float64
 	var appliedCoupon string
 	if couponCode != "" {
@@ -86,13 +81,10 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 			discount = coupon.Discount
 		}
 	}
-
 	finalTotal := totalPrice - discount
 	if finalTotal < 0 {
 		finalTotal = 0
 	}
-
-	// Prepare order items
 	var cartItems []CartItem
 	for _, item := range updatedItems {
 		cartItems = append(cartItems, CartItem{
@@ -103,7 +95,6 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 		})
 	}
 
-	// Create order
 	order := &Order{
 		ID:          primitive.NewObjectID(),
 		UserID:      userID,
@@ -117,12 +108,10 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 		CouponCode:  appliedCoupon,
 		Discount:    discount,
 	}
-
 	_, err = config.DB.Collection("orders").InsertOne(ctx, order)
 	if err != nil {
 		return nil, fmt.Errorf("failed to insert order: %v", err)
 	}
-
 	return order, nil
 }
 
@@ -139,6 +128,7 @@ func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
 	return &cart, nil
 }
 
+// Function for getting user details whos order is placed
 func GetUserDetails(userID primitive.ObjectID) (auth.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -148,6 +138,7 @@ func GetUserDetails(userID primitive.ObjectID) (auth.User, error) {
 	return user, err
 }
 
+// Function for viewing all orders placed by the user
 func ViewAllOrders(userID primitive.ObjectID, page int) ([]Order, int64, int64, error) {
 	collection := config.DB.Collection("orders")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -182,6 +173,7 @@ func ViewAllOrders(userID primitive.ObjectID, page int) ([]Order, int64, int64, 
 	return orders, totalCount, totalPages, nil
 }
 
+// Function for Canceling an order
 func CancelOrder(orderID, userID primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -198,6 +190,7 @@ func CancelOrder(orderID, userID primitive.ObjectID) error {
 	return nil
 }
 
+// Function for returning an order
 func ReturnOrder(orderID primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

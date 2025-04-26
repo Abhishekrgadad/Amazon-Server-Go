@@ -6,7 +6,6 @@ import (
 )
 
 func WebSocketHandler(c *fiber.Ctx) error {
-	// Upgrade the connection
 	return websocket.New(func(conn *websocket.Conn) {
 		AddClient(conn)
 		defer RemoveClient(conn)

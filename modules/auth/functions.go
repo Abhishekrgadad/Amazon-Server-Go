@@ -95,6 +95,7 @@ func ResetPassword(email, newPassword, role string) error {
 	return nil
 }
 
+// Function to fetch the user by email and password
 func GetUsers(page int) ([]User, int64, int, error) {
 	collection := config.DB.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -129,6 +130,7 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	return users, totalCount, len(users), nil
 }
 
+// Function to fetch the seller by email and password
 func GetSellers(page int) ([]Seller, int64, int, error) {
 	collection := config.DB.Collection("sellers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -163,6 +165,7 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	return sellers, totalCount, len(sellers), nil
 }
 
+// Function to fetch the admin by email and password
 func GetAdmins(page int) ([]Admin, int64, int, error) {
 	collection := config.DB.Collection("admins")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -197,32 +200,27 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	return admins, totalCount, len(admins), nil
 }
 
+// Function to Register a new user
 func RegisterUser(user User) (interface{}, error) {
 	collection := config.DB.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if email or phone already exists
 	var existingUser User
 	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
 		{"email": user.Email},
 		{"phone_number": user.PhoneNumber},
 	}}).Decode(&existingUser)
-
 	if err == nil {
 		return nil, mongo.ErrClientDisconnected // we'll handle error message in controller
 	} else if err != mongo.ErrNoDocuments {
 		return nil, err
 	}
-
-	// Hash the password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 	user.Password = string(hashedPassword)
-
-	// Insert into DB
 	result, err := collection.InsertOne(ctx, user)
 	if err != nil {
 		return nil, err
@@ -230,12 +228,12 @@ func RegisterUser(user User) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
+// Function to Register a new seller
 func RegisterSeller(seller Seller) (interface{}, error) {
 	collection := config.DB.Collection("sellers")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if email or phone already exists
 	var existingSeller Seller
 	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
 		{"email": seller.Email},
@@ -248,7 +246,6 @@ func RegisterSeller(seller Seller) (interface{}, error) {
 		return nil, err
 	}
 
-	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(seller.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -262,31 +259,27 @@ func RegisterSeller(seller Seller) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
+// Function to Register a new admin
 func RegisterAdmin(admin Admin) (interface{}, error) {
 	collection := config.DB.Collection("admins")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Check if email or phone already exists
 	var existingAdmin Admin
 	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
 		{"email": admin.Email},
 		{"phone_number": admin.PhoneNumber},
 	}}).Decode(&existingAdmin)
-
 	if err == nil {
 		return nil, mongo.ErrClientDisconnected
 	} else if err != mongo.ErrNoDocuments {
 		return nil, err
 	}
-
-	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 	admin.Password = string(hashedPassword)
-
 	result, err := collection.InsertOne(ctx, admin)
 	if err != nil {
 		return nil, err

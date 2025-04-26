@@ -43,11 +43,11 @@ type CartItemDetail struct {
 }
 
 type CartItemResponse struct {
-	ProductID string  `json:"product_id"`
-	ProductName      string  `json:"product_name"`
-	Price     float64 `json:"price"`
-	Quantity  int     `json:"quantity"`
-	Subtotal  float64 `json:"subtotal"`
+	ProductID   string  `json:"product_id"`
+	ProductName string  `json:"product_name"`
+	Price       float64 `json:"price"`
+	Quantity    int     `json:"quantity"`
+	Subtotal    float64 `json:"subtotal"`
 }
 
 type CartResponse struct {

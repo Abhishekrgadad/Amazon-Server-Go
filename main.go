@@ -6,7 +6,6 @@ import (
 	"server/config"
 	"server/modules/websocket"
 	"server/router"
-	
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/joho/godotenv"
@@ -20,7 +19,7 @@ func main() {
 	config.ConnectDatabase()
 	config.ConnectRedis()
 	app := fiber.New()
-	
+
 	go websocket.StartBroadcast()
 
 	router.SetupRoutes(app)

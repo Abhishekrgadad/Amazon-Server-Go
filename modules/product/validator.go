@@ -1,9 +1,9 @@
 package product
 
-import ("errors"
+import (
+	"errors"
 	"fmt"
 )
-
 
 func ValidateProduct(product *Product) error {
 	if product.Name == "" {

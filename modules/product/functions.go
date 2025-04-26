@@ -15,18 +15,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Add Product
+// Function for adding a new product
 func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	// Check if the product already exists
+
 	var existingProduct Product
 	err := collection.FindOne(ctx, bson.M{"name": product.Name}).Decode(&existingProduct)
 	if err == nil {
 		return nil, fmt.Errorf("product already exists")
 	}
-	// Insert product into database
 	result, err := collection.InsertOne(ctx, product)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add product")
@@ -34,7 +33,7 @@ func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	return result, nil
 }
 
-// Update Product
+// Function to update the product
 func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -56,7 +55,7 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	return updateResult, nil
 }
 
-// Delete the Product
+// Function to delete the product
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -73,7 +72,7 @@ func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	return deleteResult, nil
 }
 
-// Get Products
+// Function to get all products
 func GetProducts(page int) ([]Product, int64, int, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -86,7 +85,6 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	// pagination
 	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
 		Skip:  &skip,
 		Limit: &limitInt64,
@@ -96,13 +94,10 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	}
 	defer cursor.Close(ctx)
 
-	// Store products
 	var products []Product
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to parse data: %v", err)
 	}
-
-	// Calculate total pages
 	totalPages := int(totalCount / int64(limit))
 	if totalCount%int64(limit) != 0 {
 		totalPages++
@@ -110,18 +105,16 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	return products, totalCount, totalPages, nil
 }
 
-// Get Product by ID
+// Function to get a product by ID
 func GetProductByID(id string) (*Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Convert product ID to ObjectID
 	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		return nil, fmt.Errorf("invalid product ID: %v", err)
 	}
-	// Find product by ID
 	var product Product
 	err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&product)
 	if err != nil {
@@ -133,6 +126,7 @@ func GetProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
+// Function to get all active products
 func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -140,21 +134,14 @@ func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 
 	limit := int64(10)
 	skip := int64((page - 1) * int(limit))
-
-	// Filter only visible products
 	filter := bson.M{"visibility": true}
-
-	// Count total visible products
 	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-
-	// Find with filter, skip, and limit
 	findOptions := options.Find()
 	findOptions.SetSkip(skip)
 	findOptions.SetLimit(limit)
-
 	cursor, err := collection.Find(ctx, filter, findOptions)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
@@ -165,10 +152,10 @@ func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to parse product data: %v", err)
 	}
-
 	return products, totalCount, limit, nil
 }
 
+// Function to get all inactive products
 func GetInActiveProducts(page int) ([]Product, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -176,21 +163,17 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 
 	limit := int64(10)
 	skip := int64((page - 1) * int(limit))
-	// Ensure proper querying for visibility
 	filter := bson.M{"visibility": false}
-
 	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil,0, fmt.Errorf("failed to count products: %v", err)
+		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	// Find with filter, skip, and limit
 	findOptions := options.Find()
 	findOptions.SetSkip(skip)
 	findOptions.SetLimit(limit)
-
 	cursor, err := collection.Find(ctx, filter, findOptions)
 	if err != nil {
-		return nil,0, fmt.Errorf("failed to fetch products: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
 
@@ -201,14 +184,13 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 	return products, totalCount, nil
 }
 
+// Function to get filtered products
 func FilteredProducts(name string, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Build filter dynamically
 	filter := bson.M{"visibility": true}
-
 	if category != "" {
 		filter["category"] = category
 	}
@@ -216,7 +198,6 @@ func FilteredProducts(name string, category, brand string, minPrice, maxPrice fl
 		filter["brand"] = brand
 	}
 	if name != "" {
-		// Use regex for case-insensitive search
 		filter["name"] = bson.M{"$regex": name, "$options": "i"}
 	}
 	if minPrice > 0 && maxPrice > 0 {
@@ -226,8 +207,6 @@ func FilteredProducts(name string, category, brand string, minPrice, maxPrice fl
 	} else if maxPrice > 0 {
 		filter["price"] = bson.M{"$lte": maxPrice}
 	}
-
-	// Fetch products from MongoDB
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		log.Printf("Error fetching products: %v", err)
@@ -240,7 +219,6 @@ func FilteredProducts(name string, category, brand string, minPrice, maxPrice fl
 		log.Printf("Error decoding products: %v", err)
 		return nil, fmt.Errorf("failed to parse product data")
 	}
-
 	if len(products) == 0 {
 		return nil, fmt.Errorf("no products found matching the criteria")
 	}

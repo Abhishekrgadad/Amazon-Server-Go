@@ -22,15 +22,12 @@ func CheckoutHandler(c *fiber.Ctx) error {
 	}
 	userID, _ := primitive.ObjectIDFromHex(req.UserID)
 	cartID, _ := primitive.ObjectIDFromHex(req.CartID)
-
 	order, err := PlaceOrder(userID, cartID, req.PaymentType, req.Address, req.CouponCode)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2025")
-
 	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s", order.ID.Hex()))
-
 	return c.JSON(fiber.Map{
 		"message":           "Order Placed Successfully",
 		"expected_delivery": deliveryDate,
@@ -50,7 +47,6 @@ func OrderStatusHandler(c *fiber.Ctx) error {
 		time.Sleep(10 * time.Second)
 		UpdateOrderStatus(orderID, "Delivered")
 	}(orderID)
-
 	return c.JSON(fiber.Map{
 		"status": "Order Confirmed",
 		"date":   time.Now().Format("02-Jan-2006 15:04:05"),
@@ -118,7 +114,6 @@ func CancelOrderHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-
 	websocket.CancelOrderNotification(fmt.Sprintf("Order Cancelled Successfully.\n Refund will be initiated soon.\nOrder ID: %s", orderID.Hex()))
 	return c.JSON(fiber.Map{"message": "Order cancelled successfully. Refund will be initiated soon"})
 }
@@ -130,12 +125,10 @@ func ReturnOrderHandler(c *fiber.Ctx) error {
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 	}
-
 	orderID, err := primitive.ObjectIDFromHex(req.OrderID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid order ID"})
 	}
-
 	err = ReturnOrder(orderID)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})

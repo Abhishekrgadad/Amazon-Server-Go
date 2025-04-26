@@ -15,7 +15,6 @@ type CheckoutRequest struct {
 	CouponCode  string `json:"coupon_code"`
 }
 
-// CartItem represents an item in the cart.
 type CartItem struct {
 	ProductID   primitive.ObjectID `bson:"product_id" json:"product_id"`
 	ProductName string             `json:"product_name"`
@@ -23,7 +22,6 @@ type CartItem struct {
 	Price       float64            `bson:"price" json:"price"` // added for order item price
 }
 
-// CartItemResponse for response with extra fields.
 type CartItemResponse struct {
 	ProductID   primitive.ObjectID `json:"product_id"`
 	ProductName string             `json:"product_name"`
@@ -32,7 +30,6 @@ type CartItemResponse struct {
 	SubTotal    float64            `json:"sub_total"`
 }
 
-// Order structure.
 type Order struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
 	UserID      primitive.ObjectID `bson:"user_id" json:"user_id"`

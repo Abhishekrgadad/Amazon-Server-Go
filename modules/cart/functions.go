@@ -60,7 +60,6 @@ func AddToCart(userID primitive.ObjectID, items []CartItem) (*AddCartResponse, e
 
 	var details []CartItemDetail
 	var total float64
-
 	for _, item := range cart.Items {
 		var product struct {
 			Name  string  `bson:"name"`
@@ -80,7 +79,6 @@ func AddToCart(userID primitive.ObjectID, items []CartItem) (*AddCartResponse, e
 			Total:       subtotal,
 		})
 	}
-
 	return &AddCartResponse{
 		CartID:  cart.ID,
 		Details: details,
@@ -95,7 +93,6 @@ func GetCart(userID string) (*CartResponse, error) {
 
 	cartCollection := config.DB.Collection("cart")
 	productCollection := config.DB.Collection("products")
-
 	userObjID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return nil, errors.New("invalid user ID format")
@@ -111,7 +108,6 @@ func GetCart(userID string) (*CartResponse, error) {
 
 	var responseItems []CartItemResponse
 	var total float64
-
 	for _, item := range cart.Items {
 		var product product.Product
 		err := productCollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
@@ -120,16 +116,14 @@ func GetCart(userID string) (*CartResponse, error) {
 		}
 		subtotal := product.Price * float64(item.Quantity)
 		total += subtotal
-
 		responseItems = append(responseItems, CartItemResponse{
-			ProductID: product.ID.Hex(),
-			ProductName:      product.Name,
-			Price:     product.Price,
-			Quantity:  item.Quantity,
-			Subtotal:  subtotal,
+			ProductID:   product.ID.Hex(),
+			ProductName: product.Name,
+			Price:       product.Price,
+			Quantity:    item.Quantity,
+			Subtotal:    subtotal,
 		})
 	}
-
 	return &CartResponse{
 		UserID:     cart.UserID.Hex(),
 		CartID:     cart.ID.Hex(),
@@ -159,7 +153,6 @@ func UpdateCartItem(userID string, productID string, quantity int) error {
 	if err != nil {
 		return fmt.Errorf("failed to update cart item: %v", err)
 	}
-
 	if result.MatchedCount == 0 {
 		pushUpdate := bson.M{"$push": bson.M{"items": bson.M{"product_id": productObjID, "quantity": quantity}}}
 		_, err := collection.UpdateOne(ctx, bson.M{"user_id": userObjID}, pushUpdate)
@@ -194,7 +187,6 @@ func ClearCart(userID string) error {
 	collection := config.DB.Collection("cart")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	userObjID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
 		return errors.New("invalid user ID")
