@@ -1,10 +1,13 @@
 package product
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"server/errors"
 	"strconv"
 	"time"
-	"context"
 
 	"server/config"
 
@@ -12,22 +15,26 @@ import (
 )
 
 var Ctx = context.Background()
-// Function to add a product
+
 func AddProductHandler(c *fiber.Ctx) error {
 	var product Product
 	if err := c.BodyParser(&product); err != nil {
 		return errors.BadRequestError(c, "Invalid product details")
 	}
 
-	// Validate Product Data
 	if err := ValidateProduct(&product); err != nil {
 		return errors.BadRequestError(c, err.Error())
 	}
 
-	// Call function to add product
 	result, err := AddProduct(&product)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
+	}
+
+	cacheKey := "product:id:" + result.InsertedID.(string)
+	productJSON, err := json.Marshal(product)
+	if err == nil {
+		config.RedisClient.Set(Ctx, cacheKey, productJSON, time.Minute*10)
 	}
 
 	return c.JSON(fiber.Map{
@@ -36,42 +43,44 @@ func AddProductHandler(c *fiber.Ctx) error {
 	})
 }
 
-
-// Function to view products
 func GetProductsHandler(c *fiber.Ctx) error {
-	pageStr := c.Params("page") // Get the page parameter from URL
-
-	// Convert page parameter to integer
+	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page <= 0 {
-		page = 1 // Default to page 1 if page parameter is invalid
+		page = 1
 	}
 
-	// Check Redis cache for products
 	cacheKey := "products:page:" + strconv.Itoa(page)
 	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
 	if err == nil {
-		// Return cached products
-		return c.JSON(fiber.Map{
-			"data":         cachedProducts,
-			"source":       "cache",
-			"current_page": page,
-		})
+		var productsFromCache []Product
+		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
+		if err == nil {
+			return c.JSON(fiber.Map{
+				"data":         productsFromCache,
+				"source":       "cache",
+				"total_count":  len(productsFromCache),
+			})
+		}
 	}
 
-	// Fetch Products with Pagination
 	products, totalCount, totalPages, err := GetProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
 
-	// Cache the products in Redis
-	err = config.RedisClient.Set(Ctx, cacheKey, products, time.Minute*10).Err()
+	productsJSON, err := json.Marshal(products)
 	if err != nil {
+		fmt.Printf("Error serializing products for Redis: %v\n", err)
 		return errors.InternalServerError(c, "Failed to cache products")
 	}
 
-	// Return Products and Pagination Info
+	err = config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10).Err()
+	if err != nil {
+		config.ReconnectRedis()
+		return errors.InternalServerError(c, "Failed to cache products")
+	}
+
 	return c.JSON(fiber.Map{
 		"data":         products,
 		"total_count":  totalCount,
@@ -80,20 +89,31 @@ func GetProductsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Get Product by ID Handler
 func GetProductByIDHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	// Fetch Product by ID
+	cacheKey := "product:id:" + id
+	cachedProduct, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	if err == nil {
+		var productFromCache Product
+		if json.Unmarshal([]byte(cachedProduct), &productFromCache) == nil {
+			return c.JSON(productFromCache)
+		}
+	}
+
 	product, err := GetProductByID(id)
 	if err != nil {
 		return errors.NotFoundError(c, err.Error())
 	}
 
+	productJSON, err := json.Marshal(product)
+	if err == nil {
+		config.RedisClient.Set(Ctx, cacheKey, productJSON, time.Minute*10)
+	}
+
 	return c.JSON(product)
 }
 
-// Update Product Handler
 func UpdateProductHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var product Product
@@ -101,97 +121,168 @@ func UpdateProductHandler(c *fiber.Ctx) error {
 		return errors.BadRequestError(c, "Invalid product data")
 	}
 
-	// Validate Product Data
 	if err := ValidateProduct(&product); err != nil {
 		return errors.BadRequestError(c, err.Error())
 	}
 
-	// Update Product
 	_, err := UpdateProduct(id, &product)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
 
+	cacheKey := "product:id:" + id
+	config.RedisClient.Del(Ctx, cacheKey)
+
 	return c.JSON(fiber.Map{"message": "Product updated successfully"})
 }
 
-// Delete Product Handler
 func DeleteProductHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 
-	// Delete Product
 	_, err := DeleteProduct(id)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
 
+	cacheKey := "product:id:" + id
+	config.RedisClient.Del(Ctx, cacheKey)
+
 	return c.JSON(fiber.Map{"message": "Product deleted successfully"})
 }
 
-// Active Products Handler
 func GetActiveProductsHandler(c *fiber.Ctx) error {
-	// Get active products from the database
-	products, err := GetActiveProducts()
+	pageStr := c.Params("page")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page <= 0 {
+		page = 1
+	}
+	cacheKey := "active_products:page:" + strconv.Itoa(page)
+	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	if err == nil {
+		var productsFromCache []Product
+		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
+		if err == nil {
+			return c.JSON(fiber.Map{
+				"data":         productsFromCache,
+				"source":       "cache",
+				"current_page": page,
+				"total_count":  len(productsFromCache),
+			})
+		}
+	}
+	products, totalCount, limit, err := GetActiveProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to fetch active products")
 	}
 
-	// Check if products are available
 	if len(products) == 0 {
 		return errors.NotFoundError(c, "No active products found")
 	}
 
+	productsJSON, err := json.Marshal(products)
+	if err == nil {
+		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
+	}
+
 	return c.JSON(fiber.Map{
-		"products": products,
-		"message":  "Active products",
+		"products":    products,
+		"message":     "Active products",
+		"status":      "success",
+		"limit":       limit,
+		"total_count": totalCount,
 	})
 }
 
-// Inactive Products Handler
 func GetInActiveProductsHandler(c *fiber.Ctx) error {
-	// Get active products from the database
-	products, err := GetInActiveProducts()
+	pageStr := c.Params("page")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page <= 0 {
+		page = 1
+	}
+	cacheKey := "inactive_products:page:" + strconv.Itoa(page)
+	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	if err == nil {
+		var productsFromCache []Product
+		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
+		if err == nil {
+			return c.JSON(fiber.Map{
+				"data":         productsFromCache,
+				"source":       "cache",
+				"current_page": page,
+				"total_count":  len(productsFromCache),
+			})
+		}
+	}
+	products, totalCount, err := GetInActiveProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to fetch active products")
 	}
 
-	// Check if products are available
 	if len(products) == 0 {
 		return errors.NotFoundError(c, "No active products found")
 	}
 
+	productsJSON, err := json.Marshal(products)
+	if err == nil {
+		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
+	}
+
 	return c.JSON(fiber.Map{
-		"products": products,
-		"message":  "inactive products",
+		"products":    products,
+		"message":     "inactive products",
+		"status":      "success",
+		"total_count": totalCount,
 	})
 }
 
-// FilterProductsHandler handles the API request for filtering products
 func FilterProductsHandler(c *fiber.Ctx) error {
+	// Log incoming query parameters for debugging
+	log.Printf("FilterProductsHandler called with query params: name=%s, category=%s, brand=%s, min_price=%s, max_price=%s", c.Query("name"), c.Query("category"), c.Query("brand"), c.Query("min_price"), c.Query("max_price"))
+
 	name := c.Query("name")
 	category := c.Query("category")
 	brand := c.Query("brand")
 	minPriceStr := c.Query("min_price")
 	maxPriceStr := c.Query("max_price")
-	// Convert price values to float
 	var minPrice, maxPrice float64
 	var err error
+
+	// Validate and parse min_price
 	if minPriceStr != "" {
 		minPrice, err = strconv.ParseFloat(minPriceStr, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid min_price value"})
 		}
 	}
+
+	// Validate and parse max_price
 	if maxPriceStr != "" {
 		maxPrice, err = strconv.ParseFloat(maxPriceStr, 64)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid max_price value"})
 		}
 	}
-	// Fetch products with filters
+
+	// Build cache key
+	cacheKey := fmt.Sprintf("filtered_products:name=%s:category=%s:brand=%s:minPrice=%.2f:maxPrice=%.2f", name, category, brand, minPrice, maxPrice)
+	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	if err == nil {
+		var productsFromCache []Product
+		if json.Unmarshal([]byte(cachedProducts), &productsFromCache) == nil {
+			return c.JSON(fiber.Map{"products": productsFromCache, "source": "cache"})
+		}
+	}
+
+	// Fetch filtered products
 	products, err := FilteredProducts(name, category, brand, minPrice, maxPrice)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Cache the result
+	productsJSON, err := json.Marshal(products)
+	if err == nil {
+		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
 	}
 
 	return c.JSON(fiber.Map{"products": products})

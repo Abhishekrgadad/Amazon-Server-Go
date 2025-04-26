@@ -386,6 +386,7 @@ func GetAllSellerHandler(c *fiber.Ctx) error {
 	if err != nil || page < 1 {
 		return errors.BadRequestError(c, "Invalid page number")
 	}
+
 	limit := 10
 	skip := int64((page - 1) * limit)
 	limit64 := int64(limit)
@@ -411,9 +412,10 @@ func GetAllSellerHandler(c *fiber.Ctx) error {
 	if err = cursor.All(ctx, &seller); err != nil {
 		return errors.InternalServerError(c, "Failed to parse data")
 	}
+
 	return c.JSON(fiber.Map{
 		"data":        seller,
-		"total_users": totalCount,
+		"total_count": totalCount,
 		"page_no":     page,
 		"total_pages": totalPages,
 	})
@@ -493,6 +495,7 @@ func GetAllAdminsHandler(c *fiber.Ctx) error {
 	if err != nil || page < 1 {
 		return errors.BadRequestError(c, "Invalid page number")
 	}
+
 	limit := 10
 	skip := int64((page - 1) * limit)
 	limit64 := int64(limit)

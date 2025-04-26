@@ -11,6 +11,7 @@ import (
 )
 
 var RedisClient *redis.Client
+
 func ConnectRedis() {
 	if err := godotenv.Load(); err != nil {
 		fmt.Println("Error loading .env file")
@@ -25,7 +26,7 @@ func ConnectRedis() {
 
 	RedisClient = redis.NewClient(&redis.Options{
 		Addr:     redisURI,
-		Password: redisPassword, 
+		Password: redisPassword,
 		DB:       0,
 	})
 
@@ -38,4 +39,22 @@ func ConnectRedis() {
 	} else {
 		fmt.Println("Redis Connected")
 	}
+}
+
+// CheckRedisConnection verifies if Redis is connected
+func CheckRedisConnection() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	_, err := RedisClient.Ping(ctx).Result()
+	if err != nil {
+		return fmt.Errorf("Redis connection error: %v", err)
+	}
+	return nil
+}
+
+// ReconnectRedis attempts to reconnect to Redis
+func ReconnectRedis() {
+	fmt.Println("Attempting to reconnect to Redis...")
+	ConnectRedis()
 }

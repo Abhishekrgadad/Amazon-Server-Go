@@ -56,7 +56,7 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	return updateResult, nil
 }
 
-//Delete the Product
+// Delete the Product
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -133,52 +133,81 @@ func GetProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
-func GetActiveProducts() ([]Product, error) {
+func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Ensure proper querying for visibility
-	filter := bson.M{"visibility": bson.M{"$eq": true}}
-	cursor, err := collection.Find(ctx, filter)
+	limit := int64(10)
+	skip := int64((page - 1) * int(limit))
+
+	// Filter only visible products
+	filter := bson.M{"visibility": true}
+
+	// Count total visible products
+	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch products: %v", err)
+		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
+	}
+
+	// Find with filter, skip, and limit
+	findOptions := options.Find()
+	findOptions.SetSkip(skip)
+	findOptions.SetLimit(limit)
+
+	cursor, err := collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
 
 	var products []Product
 	if err = cursor.All(ctx, &products); err != nil {
-		return nil, fmt.Errorf("failed to parse product data: %v", err)
+		return nil, 0, 0, fmt.Errorf("failed to parse product data: %v", err)
 	}
-	return products, nil
+
+	return products, totalCount, limit, nil
 }
 
-func GetInActiveProducts() ([]Product, error) {
+func GetInActiveProducts(page int) ([]Product, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
+	limit := int64(10)
+	skip := int64((page - 1) * int(limit))
 	// Ensure proper querying for visibility
-	filter := bson.M{"visibility": bson.M{"$eq": false}}
-	cursor, err := collection.Find(ctx, filter)
+	filter := bson.M{"visibility": false}
+
+	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch products: %v", err)
+		return nil,0, fmt.Errorf("failed to count products: %v", err)
+	}
+	// Find with filter, skip, and limit
+	findOptions := options.Find()
+	findOptions.SetSkip(skip)
+	findOptions.SetLimit(limit)
+
+	cursor, err := collection.Find(ctx, filter, findOptions)
+	if err != nil {
+		return nil,0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
+
 	var products []Product
 	if err = cursor.All(ctx, &products); err != nil {
-		return nil, fmt.Errorf("failed to parse product data: %v", err)
+		return nil, 0, fmt.Errorf("failed to parse product data: %v", err)
 	}
-	return products, nil
+	return products, totalCount, nil
 }
 
-func FilteredProducts(name string,category, brand string, minPrice, maxPrice float64) ([]Product, error) {
+func FilteredProducts(name string, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	// Build filter dynamically
-	filter := bson.M{"visibility":true}
+	filter := bson.M{"visibility": true}
 
 	if category != "" {
 		filter["category"] = category
