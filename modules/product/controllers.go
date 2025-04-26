@@ -142,7 +142,6 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// FilterProductsHandler handles requests for filtering products
 // FilterProductsHandler handles the API request for filtering products
 func FilterProductsHandler(c *fiber.Ctx) error {
 	name := c.Query("name")
@@ -150,7 +149,6 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 	brand := c.Query("brand")
 	minPriceStr := c.Query("min_price")
 	maxPriceStr := c.Query("max_price")
-
 	// Convert price values to float
 	var minPrice, maxPrice float64
 	var err error
@@ -166,7 +164,6 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid max_price value"})
 		}
 	}
-
 	// Fetch products with filters
 	products, err := FilteredProducts(name, category, brand, minPrice, maxPrice)
 	if err != nil {

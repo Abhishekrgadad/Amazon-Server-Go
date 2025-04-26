@@ -20,20 +20,17 @@ func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	// Check if the product already exists
 	var existingProduct Product
 	err := collection.FindOne(ctx, bson.M{"name": product.Name}).Decode(&existingProduct)
 	if err == nil {
 		return nil, fmt.Errorf("product already exists")
 	}
-
 	// Insert product into database
 	result, err := collection.InsertOne(ctx, product)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add product")
 	}
-
 	return result, nil
 }
 
@@ -47,7 +44,6 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid product ID: %v", err)
 	}
-
 	product.UpdatedAt = time.Now().Format(time.RFC3339)
 	updateResult, err := collection.UpdateOne(
 		ctx,
@@ -60,6 +56,7 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	return updateResult, nil
 }
 
+//Delete the Product
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -69,7 +66,6 @@ func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid product ID: %v", err)
 	}
-
 	deleteResult, err := collection.DeleteOne(ctx, bson.M{"_id": objectID})
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete product: %v", err)
@@ -86,7 +82,6 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	limit := 10
 	skip := int64((page - 1) * limit)
 	limitInt64 := int64(limit)
-
 	totalCount, err := collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
@@ -112,7 +107,6 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	if totalCount%int64(limit) != 0 {
 		totalPages++
 	}
-
 	return products, totalCount, totalPages, nil
 }
 
@@ -127,7 +121,6 @@ func GetProductByID(id string) (*Product, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid product ID: %v", err)
 	}
-
 	// Find product by ID
 	var product Product
 	err = collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&product)
@@ -147,7 +140,6 @@ func GetActiveProducts() ([]Product, error) {
 
 	// Ensure proper querying for visibility
 	filter := bson.M{"visibility": bson.M{"$eq": true}}
-
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch products: %v", err)
@@ -158,7 +150,6 @@ func GetActiveProducts() ([]Product, error) {
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, fmt.Errorf("failed to parse product data: %v", err)
 	}
-
 	return products, nil
 }
 

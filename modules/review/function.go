@@ -24,13 +24,9 @@ func AddReview(userID, productID, orderID primitive.ObjectID, rating int, commen
 		Comment:   comment,
 		CreatedAt: time.Now(),
 	}
-
-	// Insert new review
 	if _, err := config.DB.Collection("reviews").InsertOne(ctx, review); err != nil {
 		return fmt.Errorf("failed to insert review: %v", err)
 	}
-
-	// Fetch all reviews for the product
 	reviews, err := GetReviewsByProduct(productID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch reviews: %v", err)
@@ -38,7 +34,6 @@ func AddReview(userID, productID, orderID primitive.ObjectID, rating int, commen
 
 	var totalRating int
 	var comments []string
-
 	for i := 0; i < len(reviews); i++ {
 		totalRating += reviews[i].Rating
 	}
@@ -47,13 +42,10 @@ func AddReview(userID, productID, orderID primitive.ObjectID, rating int, commen
 	sort.SliceStable(reviews, func(i, j int) bool {
 		return reviews[i].CreatedAt.After(reviews[j].CreatedAt)
 	})
-
 	for i := 0; i < len(reviews) && i < 5; i++ {
 		comments = append(comments, reviews[i].Comment)
 	}
-
 	avgRating := float64(totalRating) / float64(len(reviews))
-
 	// Update the product document with average rating and latest comments
 	update := bson.M{
 		"$set": bson.M{
@@ -61,15 +53,12 @@ func AddReview(userID, productID, orderID primitive.ObjectID, rating int, commen
 			"review_comments": comments,
 		},
 	}
-
 	_, err = config.DB.Collection("products").UpdateOne(ctx, bson.M{"_id": productID}, update)
 	if err != nil {
 		return fmt.Errorf("failed to update product with review data: %v", err)
 	}
-
 	return nil
 }
-
 
 func GetReviewsByProduct(productID primitive.ObjectID) ([]Review, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -85,6 +74,5 @@ func GetReviewsByProduct(productID primitive.ObjectID) ([]Review, error) {
 	if err = cursor.All(ctx, &reviews); err != nil {
 		return nil, err
 	}
-
 	return reviews, nil
 }

@@ -22,4 +22,3 @@ type ReviewRequest struct {
 	Rating    int    `json:"rating"`
 	Comment   string `json:"comment"`
 }
-
