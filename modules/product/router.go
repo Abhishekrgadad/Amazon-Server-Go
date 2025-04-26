@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-// 📌 Setup Product Routes
 func SetupProductRoutes(router fiber.Router) {
 	log.Println("Setting up product routes...")
 	products := router.Group("/products") // Group all product-related routes under "/auth/products"

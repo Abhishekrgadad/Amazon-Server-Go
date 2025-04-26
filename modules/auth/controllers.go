@@ -2,8 +2,7 @@ package auth
 
 import (
 	"context"
-	"math"
-	"net/http"
+
 	"server/config"
 	"server/errors"
 	"strconv"
@@ -14,90 +13,51 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var validate = validator.New()
-
-//This controller contains all the authentication part routes realted to users, sellers and admins.
 
 func RegisterUserHandler(c *fiber.Ctx) error {
 	var user User
 	if err := c.BodyParser(&user); err != nil {
 		return errors.BadRequestError(c, "Invalid request data")
 	}
+
 	if err := validate.Struct(user); err != nil {
 		return errors.BadRequestError(c, "Validation failed: "+err.Error())
 	}
 
-	collection := config.DB.Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var existingUser User
-	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": user.Email},
-		{"phone_number": user.PhoneNumber},
-	}}).Decode(&existingUser)
-	if err == nil {
-		return errors.ConflictError(c, "Email or phone number already registered")
-	} else if err != mongo.ErrNoDocuments {
-		return errors.InternalServerError(c, "Database error")
+	id, err := RegisterUser(user)
+	if err != nil {
+		if err == mongo.ErrClientDisconnected {
+			return errors.ConflictError(c, "Email or phone number already registered")
+		}
+		return errors.InternalServerError(c, "Failed to register user: "+err.Error())
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return errors.InternalServerError(c, "Could not hash password")
-	}
-	user.Password = string(hashedPassword)
-	result, err := collection.InsertOne(ctx, user)
-	if err != nil {
-		return errors.InternalServerError(c, "Failed to register user")
-	}
-	return c.JSON(fiber.Map{"message": "User registered successfully", "user_id": result.InsertedID})
+	return c.JSON(fiber.Map{"message": "User registered successfully", "user_id": id})
 }
 
 func RegisterSellerHandler(c *fiber.Ctx) error {
 	var seller Seller
-
 	if err := c.BodyParser(&seller); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request data"})
+		return errors.BadRequestError(c, "Invalid request data")
 	}
 
 	if err := validate.Struct(seller); err != nil {
-		return c.Status(http.StatusBadRequest).JSON(fiber.Map{"error": "Validation failed", "details": err.Error()})
+		return errors.BadRequestError(c, "Validation failed: "+err.Error())
 	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(seller.Password), bcrypt.DefaultCost)
+	id, err := RegisterSeller(seller)
 	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to hash password"})
-	}
-	seller.Password = string(hashedPassword)
-
-	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	var existingSeller Seller
-	err = collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": seller.Email},
-		{"phone_number": seller.PhoneNumber},
-	}}).Decode(&existingSeller)
-
-	if err == nil {
-		return errors.ConflictError(c, "Email or phone number already registered")
-	} else if err != mongo.ErrNoDocuments {
-		return errors.InternalServerError(c, "Database error")
+		if err == mongo.ErrClientDisconnected {
+			return errors.ConflictError(c, "Email or phone number already registered")
+		}
+		return errors.InternalServerError(c, "Failed to register seller: "+err.Error())
 	}
 
-	// Insert seller into MongoDB
-	result, err := collection.InsertOne(ctx, seller)
-	if err != nil {
-		return c.Status(http.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to register seller"})
-	}
-
-	return c.JSON(fiber.Map{"message": "Seller registered successfully", "seller_id": result.InsertedID})
+	return c.JSON(fiber.Map{"message": "Seller registered successfully", "seller_id": id})
 }
 
 func RegisterAdminHandler(c *fiber.Ctx) error {
@@ -106,34 +66,19 @@ func RegisterAdminHandler(c *fiber.Ctx) error {
 		return errors.BadRequestError(c, "Invalid request data")
 	}
 
-	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	if err := validate.Struct(admin); err != nil {
+		return errors.BadRequestError(c, "Validation failed: "+err.Error())
+	}
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
+	id, err := RegisterAdmin(admin)
 	if err != nil {
-		return errors.InternalServerError(c, "Could not hash password")
-	}
-	admin.Password = string(hashedPassword)
-
-	var existingAdmin Admin
-	err = collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": admin.Email},
-		{"phone_number": admin.PhoneNumber},
-	}}).Decode(&existingAdmin)
-
-	if err == nil {
-		return errors.ConflictError(c, "Email or phone number already registered")
-	} else if err != mongo.ErrNoDocuments {
-		return errors.InternalServerError(c, "Database error")
+		if err == mongo.ErrClientDisconnected {
+			return errors.ConflictError(c, "Email or phone number already registered")
+		}
+		return errors.InternalServerError(c, "Failed to register admin: "+err.Error())
 	}
 
-	result, err := collection.InsertOne(ctx, admin)
-	if err != nil {
-		return errors.InternalServerError(c, "Failed to register admin")
-	}
-
-	return c.JSON(fiber.Map{"message": "Admin registered successfully", "admin_id": result.InsertedID})
+	return c.JSON(fiber.Map{"message": "Admin registered successfully", "admin_id": id})
 }
 
 func LoginHandler(c *fiber.Ctx) error {
@@ -268,46 +213,22 @@ func UpdatePassword(c *fiber.Ctx) error {
 }
 
 func GetAllUsersHandler(c *fiber.Ctx) error {
-	collection := config.DB.Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	page, err := strconv.Atoi(c.Params("page"))
+	pageStr := c.Params("page")
+	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		return errors.BadRequestError(c, "Invalid page number")
 	}
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limit64 := int64(limit)
 
-	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	users, totalCount, totalPages, err := GetUsers(page)
 	if err != nil {
-		return errors.InternalServerError(c, "Failed to count users")
-	}
-	totalPages := int(math.Ceil(float64(totalCount) / float64(limit)))
-	if page > totalPages {
-		return errors.NotFoundError(c, "No data available for this page")
-	}
-
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Limit: &limit64,
-		Skip:  &skip,
-	})
-	if err != nil {
-		return errors.InternalServerError(c, "Database error")
-	}
-	defer cursor.Close(ctx)
-
-	var users []bson.M
-	if err = cursor.All(ctx, &users); err != nil {
-		return errors.InternalServerError(c, "Failed to parse data")
+		return errors.InternalServerError(c, "Failed to fetch users")
 	}
 
 	return c.JSON(fiber.Map{
-		"data":        users,
-		"total_users": totalCount,
-		"page_no":     page,
-		"total_pages": totalPages,
+		"data":         users,
+		"total_count":  totalCount,
+		"current_page": page,
+		"total_pages":  totalPages,
 	})
 }
 
@@ -378,46 +299,21 @@ func DeleteUserHandler(c *fiber.Ctx) error {
 }
 
 func GetAllSellerHandler(c *fiber.Ctx) error {
-	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	page, err := strconv.Atoi(c.Params("page"))
+	pageStr := c.Params("page")
+	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		return errors.BadRequestError(c, "Invalid page number")
 	}
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limit64 := int64(limit)
-
-	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	sellers, totalCount, totalPages, err := GetSellers(page)
 	if err != nil {
-		return errors.InternalServerError(c, "Failed to count sellers")
+		return errors.InternalServerError(c, "Failed to fetch sellers")
 	}
-	totalPages := int(math.Ceil(float64(totalCount) / float64(limit)))
-	if page > totalPages {
-		return errors.NotFoundError(c, "No data available for this page")
-	}
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Limit: &limit64,
-		Skip:  &skip,
-	})
-	if err != nil {
-		return errors.InternalServerError(c, "Database error")
-	}
-	defer cursor.Close(ctx)
-
-	var seller []bson.M
-	if err = cursor.All(ctx, &seller); err != nil {
-		return errors.InternalServerError(c, "Failed to parse data")
-	}
-
 	return c.JSON(fiber.Map{
-		"data":        seller,
-		"total_count": totalCount,
-		"page_no":     page,
-		"total_pages": totalPages,
+		"data":         sellers,
+		"total_count":  totalCount,
+		"current_page": page,
+		"total_pages":  totalPages,
 	})
 }
 
@@ -487,45 +383,21 @@ func DeleteSellerHandler(c *fiber.Ctx) error {
 }
 
 func GetAllAdminsHandler(c *fiber.Ctx) error {
-	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	page, err := strconv.Atoi(c.Params("page"))
+	pageStr := c.Params("page")
+	page, err := strconv.Atoi(pageStr)
 	if err != nil || page < 1 {
 		return errors.BadRequestError(c, "Invalid page number")
 	}
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limit64 := int64(limit)
-
-	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	admins, totalCount, totalPages, err := GetAdmins(page)
 	if err != nil {
-		return errors.InternalServerError(c, "Failed to count admins")
-	}
-	totalPages := int(math.Ceil(float64(totalCount) / float64(limit)))
-	if page > totalPages {
-		return errors.NotFoundError(c, "No data available for this page")
-	}
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Limit: &limit64,
-		Skip:  &skip,
-	})
-	if err != nil {
-		return errors.InternalServerError(c, "Database error")
-	}
-	defer cursor.Close(ctx)
-
-	var admins []bson.M
-	if err = cursor.All(ctx, &admins); err != nil {
-		return errors.InternalServerError(c, "Failed to parse data")
+		return errors.InternalServerError(c, "Failed to fetch admins")
 	}
 
 	return c.JSON(fiber.Map{
 		"data":         admins,
-		"total_admins": totalCount,
-		"page_no":      page,
+		"total_count":  totalCount,
+		"current_page": page,
 		"total_pages":  totalPages,
 	})
 }

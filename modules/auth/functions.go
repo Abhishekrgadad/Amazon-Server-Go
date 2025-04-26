@@ -13,6 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -92,4 +93,203 @@ func ResetPassword(email, newPassword, role string) error {
 		return err
 	}
 	return nil
+}
+
+func GetUsers(page int) ([]User, int64, int, error) {
+	collection := config.DB.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	limit := 10
+	skip := int64((page - 1) * limit)
+	limitInt64 := int64(limit)
+	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	// pagination
+	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
+		Skip:  &skip,
+		Limit: &limitInt64,
+	})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []User
+	if err = cursor.All(ctx, &users); err != nil {
+		return nil, 0, 0, err
+	}
+
+	totalPages := int(totalCount) / limit
+	if totalCount%int64(limit) != 0 {
+		totalPages++
+	}
+	return users, totalCount, len(users), nil
+}
+
+func GetSellers(page int) ([]Seller, int64, int, error) {
+	collection := config.DB.Collection("sellers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	limit := 10
+	skip := int64((page - 1) * limit)
+	limitInt64 := int64(limit)
+	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	// pagination
+	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
+		Skip:  &skip,
+		Limit: &limitInt64,
+	})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var sellers []Seller
+	if err = cursor.All(ctx, &sellers); err != nil {
+		return nil, 0, 0, err
+	}
+
+	totalPages := int(totalCount) / limit
+	if totalCount%int64(limit) != 0 {
+		totalPages++
+	}
+	return sellers, totalCount, len(sellers), nil
+}
+
+func GetAdmins(page int) ([]Admin, int64, int, error) {
+	collection := config.DB.Collection("admins")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	limit := 10
+	skip := int64((page - 1) * limit)
+	limitInt64 := int64(limit)
+	totalCount, err := collection.CountDocuments(ctx, bson.M{})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	// pagination
+	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
+		Skip:  &skip,
+		Limit: &limitInt64,
+	})
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer cursor.Close(ctx)
+
+	var admins []Admin
+	if err = cursor.All(ctx, &admins); err != nil {
+		return nil, 0, 0, err
+	}
+
+	totalPages := int(totalCount) / limit
+	if totalCount%int64(limit) != 0 {
+		totalPages++
+	}
+	return admins, totalCount, len(admins), nil
+}
+
+func RegisterUser(user User) (interface{}, error) {
+	collection := config.DB.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Check if email or phone already exists
+	var existingUser User
+	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
+		{"email": user.Email},
+		{"phone_number": user.PhoneNumber},
+	}}).Decode(&existingUser)
+
+	if err == nil {
+		return nil, mongo.ErrClientDisconnected // we'll handle error message in controller
+	} else if err != mongo.ErrNoDocuments {
+		return nil, err
+	}
+
+	// Hash the password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	user.Password = string(hashedPassword)
+
+	// Insert into DB
+	result, err := collection.InsertOne(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+	return result.InsertedID, nil
+}
+
+func RegisterSeller(seller Seller) (interface{}, error) {
+	collection := config.DB.Collection("sellers")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Check if email or phone already exists
+	var existingSeller Seller
+	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
+		{"email": seller.Email},
+		{"phone_number": seller.PhoneNumber},
+	}}).Decode(&existingSeller)
+
+	if err == nil {
+		return nil, mongo.ErrClientDisconnected
+	} else if err != mongo.ErrNoDocuments {
+		return nil, err
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(seller.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	seller.Password = string(hashedPassword)
+
+	result, err := collection.InsertOne(ctx, seller)
+	if err != nil {
+		return nil, err
+	}
+	return result.InsertedID, nil
+}
+
+func RegisterAdmin(admin Admin) (interface{}, error) {
+	collection := config.DB.Collection("admins")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// Check if email or phone already exists
+	var existingAdmin Admin
+	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
+		{"email": admin.Email},
+		{"phone_number": admin.PhoneNumber},
+	}}).Decode(&existingAdmin)
+
+	if err == nil {
+		return nil, mongo.ErrClientDisconnected
+	} else if err != mongo.ErrNoDocuments {
+		return nil, err
+	}
+
+	// Hash password
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+	admin.Password = string(hashedPassword)
+
+	result, err := collection.InsertOne(ctx, admin)
+	if err != nil {
+		return nil, err
+	}
+	return result.InsertedID, nil
 }
