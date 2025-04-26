@@ -10,7 +10,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// JWTProtected allows dynamic access control based on roles: "user", "seller", "admin"
 func JWTProtected(allowedRoles ...string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
@@ -42,7 +41,6 @@ func JWTProtected(allowedRoles ...string) fiber.Handler {
 			return errors.UnauthorizedError(c, "Role not found in token")
 		}
 
-		// ✅ Check if the user's role is in the allowedRoles list
 		for _, role := range allowedRoles {
 			if userRole == role {
 				c.Locals("user_id", claims["user_id"])
@@ -55,15 +53,6 @@ func JWTProtected(allowedRoles ...string) fiber.Handler {
 	}
 }
 
-// import (
-// 	"os"
-// 	"server/errors"
-// 	"strings"
-
-// 	"github.com/gofiber/fiber/v2"
-// 	"github.com/golang-jwt/jwt/v5"
-// 	"github.com/joho/godotenv"
-// )
 
 // func JWTProtected(allowedRoles ...string) fiber.Handler {
 // 	return func(c *fiber.Ctx) error {
