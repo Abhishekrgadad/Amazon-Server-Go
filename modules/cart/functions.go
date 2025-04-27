@@ -194,3 +194,30 @@ func ClearCart(userID string) error {
 	_, err = collection.DeleteOne(ctx, bson.M{"user_id": userObjID})
 	return err
 }
+
+// Function to fetch all cart records
+func GetAllCarts() ([]Cart, error) {
+	cartCollection := config.DB.Collection("cart")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var carts []Cart
+	cursor, err := cartCollection.Find(ctx, bson.M{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch carts: %v", err)
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx) {
+		var cart Cart
+		if err := cursor.Decode(&cart); err != nil {
+			return nil, fmt.Errorf("failed to decode cart: %v", err)
+		}
+		carts = append(carts, cart)
+	}
+
+	if err := cursor.Err(); err != nil {
+		return nil, fmt.Errorf("cursor error: %v", err)
+	}
+	return carts, nil
+}

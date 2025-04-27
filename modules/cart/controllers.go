@@ -1,9 +1,12 @@
 package cart
 
 import (
+	"server/config"
 	"server/errors"
+	"server/modules/product"
 
 	"github.com/gofiber/fiber/v2"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -95,4 +98,41 @@ func ClearCartHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 	return c.JSON(fiber.Map{"message": "Cart cleared"})
+}
+
+// Updated GetAllCartsHandler to include detailed product information
+func GetAllCartsHandler(c *fiber.Ctx) error {
+	carts, err := GetAllCarts()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	var detailedCarts []fiber.Map
+	for _, cart := range carts {
+		var responseItems []CartItemResponse
+		var total float64
+		for _, item := range cart.Items {
+			var product product.Product
+			err := config.DB.Collection("products").FindOne(c.Context(), bson.M{"_id": item.ProductID}).Decode(&product)
+			if err != nil {
+				continue // Skip if product not found
+			}
+			subtotal := product.Price * float64(item.Quantity)
+			total += subtotal
+			responseItems = append(responseItems, CartItemResponse{
+				ProductID:   product.ID.Hex(),
+				ProductName: product.Name,
+				Price:       product.Price,
+				Quantity:    item.Quantity,
+				Subtotal:    subtotal,
+			})
+		}
+		detailedCarts = append(detailedCarts, fiber.Map{
+			"user_id":     cart.UserID.Hex(),
+			"cart_id":     cart.ID.Hex(),
+			"items":       responseItems,
+			"total_price": total,
+		})
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"carts": detailedCarts})
 }

@@ -18,9 +18,10 @@
 * Update the Review module with its functions
 
 //Pending
-* update add cart route so that if products are null then throw error
-* add success parameter for all responses.
+* add status as success and failure for respecitve responses for all responses.
 * update view cart by both userid and cartid
+* Filter is still not working as expected 
+* 
 
 //Testing Done 
 - auth
