@@ -8,21 +8,6 @@
 * simulate the payment transactions 
 * apply pagination for all the required endpoints
 * maintain clean code with reuse of code and snippets
-* 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 * update the code to auto update the stocks available in products.
 * Checking for all handler that seggregation is perfect between them.
 * update the structure.go file of orders and remove the cartitems and cartitemresponse etc.
@@ -30,4 +15,4 @@
 * Check the products filter endpoint its not working as expected.
 * Check every endpoint and atlast to make sure everything is working fine.
 * Role based access need to be achieved if possible.
-* Update the Review module with its function
+* Update the Review module with its functions

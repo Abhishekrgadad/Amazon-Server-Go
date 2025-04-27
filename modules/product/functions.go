@@ -185,7 +185,7 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 }
 
 // Function to get filtered products
-func FilteredProducts(name string, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
+func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -209,18 +209,19 @@ func FilteredProducts(name string, category, brand string, minPrice, maxPrice fl
 	}
 	cursor, err := collection.Find(ctx, filter)
 	if err != nil {
-		log.Printf("Error fetching products: %v", err)
-		return nil, fmt.Errorf("database query failed")
+		log.Printf("MongoDB Find error: %v", err)
+		return nil, fmt.Errorf("failed to query products")
 	}
 	defer cursor.Close(ctx)
 
 	var products []Product
 	if err := cursor.All(ctx, &products); err != nil {
-		log.Printf("Error decoding products: %v", err)
-		return nil, fmt.Errorf("failed to parse product data")
+		log.Printf("MongoDB Cursor decode error: %v", err)
+		return nil, fmt.Errorf("failed to decode products data")
 	}
 	if len(products) == 0 {
 		return nil, fmt.Errorf("no products found matching the criteria")
 	}
 	return products, nil
 }
+

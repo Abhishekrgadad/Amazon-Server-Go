@@ -28,11 +28,6 @@ func AddProductHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
-	cacheKey := "product:id:" + result.InsertedID.(string)
-	productJSON, err := json.Marshal(product)
-	if err == nil {
-		config.RedisClient.Set(Ctx, cacheKey, productJSON, time.Minute*10)
-	}
 	return c.JSON(fiber.Map{
 		"message":    "Product added successfully",
 		"product_id": result.InsertedID,
@@ -117,8 +112,6 @@ func UpdateProductHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
-	cacheKey := "product:id:" + id
-	config.RedisClient.Del(Ctx, cacheKey)
 	return c.JSON(fiber.Map{"message": "Product updated successfully"})
 }
 
@@ -129,8 +122,6 @@ func DeleteProductHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
-	cacheKey := "product:id:" + id
-	config.RedisClient.Del(Ctx, cacheKey)
 	return c.JSON(fiber.Map{"message": "Product deleted successfully"})
 }
 
@@ -220,11 +211,13 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 
 // Function to apply different filter products
 func FilterProductsHandler(c *fiber.Ctx) error {
+	fmt.Println("inside filter route")
 	name := c.Query("name")
 	category := c.Query("category")
 	brand := c.Query("brand")
 	minPriceStr := c.Query("min_price")
 	maxPriceStr := c.Query("max_price")
+
 	var minPrice, maxPrice float64
 	var err error
 	if minPriceStr != "" {
@@ -240,7 +233,8 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 		}
 	}
 	cacheKey := fmt.Sprintf("filtered_products:name=%s:category=%s:brand=%s:minPrice=%.2f:maxPrice=%.2f", name, category, brand, minPrice, maxPrice)
-	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
+	ctx := context.Background()
+	cachedProducts, err := config.RedisClient.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var productsFromCache []Product
 		if json.Unmarshal([]byte(cachedProducts), &productsFromCache) == nil {
@@ -253,7 +247,7 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 	}
 	productsJSON, err := json.Marshal(products)
 	if err == nil {
-		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
+		config.RedisClient.Set(ctx, cacheKey, productsJSON, time.Minute*10)
 	}
 	return c.JSON(fiber.Map{"products": products})
 }
