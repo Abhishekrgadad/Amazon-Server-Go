@@ -19,5 +19,4 @@ func SetupRoutes(app *fiber.App) {
 	order.SetupOrderRoutes(root)
 	review.SetupReviewRoutes(root)
 	coupons.SetupCouponRoutes(root)
-
 }

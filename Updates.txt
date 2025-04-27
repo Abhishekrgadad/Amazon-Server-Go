@@ -16,3 +16,15 @@
 * Check every endpoint and atlast to make sure everything is working fine.
 * Role based access need to be achieved if possible.
 * Update the Review module with its functions
+
+//Pending
+* update add cart route so that if products are null then throw error
+* add success parameter for all responses.
+* update view cart by both userid and cartid
+
+//Testing Done 
+- auth
+- Register
+- Login 
+- Accounts
+- Cart 

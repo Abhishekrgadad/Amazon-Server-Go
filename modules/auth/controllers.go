@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"server/config"
 	"server/errors"
 	"strconv"
@@ -154,10 +155,14 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 		}
 		return errors.InternalServerError(c, "Database error")
 	}
-	resetToken, err := HashPassword(request.Email + time.Now().String())
+
+	resetTokenInput := request.Email + time.Now().String()
+	resetToken, err := HashPassword(resetTokenInput)
 	if err != nil {
+		fmt.Printf("Error hashing reset token input '%s': %v\n", resetTokenInput, err)
 		return errors.InternalServerError(c, "Could not generate reset token")
 	}
+
 	_, err = collection.UpdateOne(ctx, bson.M{"email": request.Email}, bson.M{"$set": bson.M{"reset_token": resetToken}})
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to generate reset token")

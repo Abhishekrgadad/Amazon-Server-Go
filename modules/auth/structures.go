@@ -28,9 +28,9 @@ type Seller struct {
 type Admin struct {
 	ID          primitive.ObjectID `bson:"_id,omitempty"`
 	AdminName   string             `json:"admin_name" bson:"admin_name" validate:"required,min=3,max=50"`
-	AdminRole   string             `json:"admin_role" bson:"admin_role" validate:"required,oneof=super_admin moderator support"`
+	AdminRole   string             `json:"admin_role" bson:"admin_role" validate:"required,oneof=admin superadmin"`
 	Email       string             `json:"email" bson:"email" validate:"required,email"`
-	PhoneNumber string             `json:"phone_number" bson:"phone_number" validate:"required,e164, len=13"`
+	PhoneNumber string             `json:"phone_number" bson:"phone_number" validate:"required,e164"`
 	Password    string             `json:"password" bson:"password" validate:"required,min=6"`
 }
 

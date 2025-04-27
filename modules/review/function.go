@@ -2,61 +2,88 @@ package review
 
 import (
 	"context"
-	"fmt"
 	"server/config"
-	"sort"
+	"server/errors"
+	"server/modules/order"
+	"server/modules/product"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func AddReview(userID, productID, orderID primitive.ObjectID, rating int, comment string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+func AddReview(req ReviewRequest) error {
+	orderID, err := primitive.ObjectIDFromHex(req.OrderID)
+	if err != nil {
+		return err
+	}
+	productID, err := primitive.ObjectIDFromHex(req.ProductID)
+	if err != nil {
+		return err
+	}
+
+	orderCollection := config.DB.Collection("orders")
+	var order order.Order
+	err = orderCollection.FindOne(context.TODO(), bson.M{
+		"_id":        orderID,
+		"product_id": productID,
+	}).Decode(&order)
+	if err != nil {
+		return err
+	}
+	productFound := false
+	for _, item := range order.Items {
+		if item.ProductID == productID {
+			productFound = true
+			break
+		}
+	}
+	if !productFound {
+		return errors.NotFoundError(nil, "Product not found in the order")
+	}
 
 	review := Review{
 		ID:        primitive.NewObjectID(),
-		UserID:    userID,
 		ProductID: productID,
 		OrderID:   orderID,
-		Rating:    rating,
-		Comment:   comment,
+		Rating:    req.Rating,
+		Comment:   req.Comment,
 		CreatedAt: time.Now(),
 	}
-	if _, err := config.DB.Collection("reviews").InsertOne(ctx, review); err != nil {
-		return fmt.Errorf("failed to insert review: %v", err)
-	}
-	reviews, err := GetReviewsByProduct(productID)
+	_, err = config.DB.Collection("reviews").InsertOne(context.TODO(), review)
 	if err != nil {
-		return fmt.Errorf("failed to fetch reviews: %v", err)
+		return err
 	}
+	productCollection := config.DB.Collection("products")
+	var product product.Product
+	err = productCollection.FindOne(context.TODO(), bson.M{"_id": productID}).Decode(&product)
+	if err != nil {
+		return err
+	}
+	newTotalReviews := product.TotalReviews + 1
+	newAverageRating := ((product.AverageRating * float64(product.TotalReviews)) + float64(req.Rating)) / float64(newTotalReviews)
 
-	var totalRating int
-	var comments []string
-	for i := 0; i < len(reviews); i++ {
-		totalRating += reviews[i].Rating
-	}
-
-	// Get latest 5 comments (sorted by CreatedAt descending)
-	sort.SliceStable(reviews, func(i, j int) bool {
-		return reviews[i].CreatedAt.After(reviews[j].CreatedAt)
-	})
-	for i := 0; i < len(reviews) && i < 5; i++ {
-		comments = append(comments, reviews[i].Comment)
-	}
-	avgRating := float64(totalRating) / float64(len(reviews))
-	// Update the product document with average rating and latest comments
-	update := bson.M{
-		"$set": bson.M{
-			"average_rating":  avgRating,
-			"review_comments": comments,
+	_, err = productCollection.UpdateOne(
+		context.TODO(),
+		bson.M{"_id": productID},
+		bson.M{
+			"$set": bson.M{
+				"average_rating": newAverageRating,
+				"total_reviews":  newTotalReviews,
+			},
+			"$push": bson.M{
+				"comments": bson.M{
+					"comment":    req.Comment,
+					"rating":     req.Rating,
+					"created_at": time.Now(),
+				},
+			},
 		},
-	}
-	_, err = config.DB.Collection("products").UpdateOne(ctx, bson.M{"_id": productID}, update)
+	)
 	if err != nil {
-		return fmt.Errorf("failed to update product with review data: %v", err)
+		return err
 	}
+
 	return nil
 }
 
