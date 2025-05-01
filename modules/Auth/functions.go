@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"server/config"
 	validation "server/modules/Validation"
 	"time"
@@ -9,90 +10,157 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/crypto/bcrypt"
 )
 
 func HashPassword(password string) string {
-	hash,_ := bcrypt.GenerateFromPassword([]byte(password),bcrypt.DefaultCost)
+	hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hash)
 }
 
 func CheckPassword(password, hashed string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hashed),[]byte(password))
+	err := bcrypt.CompareHashAndPassword([]byte(hashed), []byte(password))
 	return err == nil
 }
 
-func RegisterUserHandler(c *fiber.Ctx) error{
+func IsEmailTaken(email string) (bool, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	checkmailcollection := []string{"users", "admins"}
+
+	for _, col := range checkmailcollection {
+		collection := config.DB.Collection(col)
+
+		filter := bson.M{"email": email}
+
+		var result User
+		err := collection.FindOne(ctx, filter).Decode(&result)
+		if err == nil {
+			return true, col, nil
+		}
+		if err != mongo.ErrNoDocuments {
+			return false, "", err
+		}
+	}
+	return false, "", nil
+}
+
+func IsPhoneTaken(phone string) (bool, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	checkphonecollection := []string{"users", "admins"}
+
+	for _, col := range checkphonecollection {
+		collection := config.DB.Collection(col)
+		filter := bson.M{"phone": phone}
+
+		var result User
+		err := collection.FindOne(ctx, filter).Decode(&result)
+		if err == nil {
+			return true, col, nil
+		}
+		if err != mongo.ErrNoDocuments {
+			return false, "", err
+		}
+	}
+	return false, "", nil
+}
+
+func RegisterUserHandler(c *fiber.Ctx) error {
 	user := new(User)
 	if err := c.BodyParser(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"Cannot parse Json"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Cannot parse Json"})
 	}
 
-	if err := validation.ValidateUser(user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":err.Error()})
+	if err := validation.ValidateInputs(user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
 
 	usercollection := config.DB.Collection("users")
-	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	checkmail, err := usercollection.CountDocuments(ctx,bson.M{"email":user.Email})
+	checkMail, collectionName, err := IsEmailTaken(user.Email)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"Error checking the existing user"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error checking the existing user",
+		})
 	}
-	if checkmail > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"User already exist"})
+	if checkMail {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Email already exists in '%s'", collectionName),
+		})
 	}
-	checkphone, err := usercollection.CountDocuments(ctx,bson.M{"phone":user.Phone})
-	if err != nil{
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"Error checking the existing phone no."})
+
+	checkphone, collectionName, err := IsPhoneTaken(user.Phone)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error checking the existng user",
+		})
 	}
-	if checkphone > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"user already exist"})
+	if checkphone {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Phone no. already exists in '%s'", collectionName),
+		})
 	}
 
 	user.Password = HashPassword(user.Password)
 	user.ID = primitive.NewObjectID()
 
-	_,err = usercollection.InsertOne(ctx,user) 
-	if err != nil{
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"Failed to create user"})
+	_, err = usercollection.InsertOne(ctx, user)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create user"})
 	}
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message":"user created successfully"})
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "user created successfully"})
 }
 
-func RegisterAdmin(c *fiber.Ctx) error {
+func RegisterAdminHandler(c *fiber.Ctx) error {
 	admin := new(Admin)
-	if err := c.BodyParser(admin); err != nil{
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"Failed to parse admin"})
+	if err := c.BodyParser(admin); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to parse admin"})
 	}
 
+	if err := validation.ValidateInputs(admin); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 	admincollection := config.DB.Collection("admins")
-	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	checkemail, err := admincollection.CountDocuments(ctx,bson.M{"email":admin.Email})
+	checkMail, collectionName, err := IsEmailTaken(admin.Email)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"error checking the existing email"})
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error checking the existing user",
+		})
 	}
-	if checkemail > 0{
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"Email already in use"})
+	if checkMail {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Email already exists in '%s'", collectionName),
+		})
 	}
-	checkphone,err := admincollection.CountDocuments(ctx,bson.M{"phone":admin.Phone})
-	if err !=nil{
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"error checking the exising phone"})
+
+	checkphone, collectionName, err := IsPhoneTaken(admin.Phone)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Error checking the existng user",
+		})
 	}
-	if checkphone > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"phone already in use"})
+	if checkphone {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": fmt.Sprintf("Phone no. already exists in '%s'", collectionName),
+		})
 	}
 
 	admin.Password = HashPassword(admin.Password)
 	admin.ID = primitive.NewObjectID()
 	admin.Role = "admin"
 
-	_,err = admincollection.InsertOne(ctx,admin)
-	if err != nil{
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error":"Failed to create admin user"})
+	_, err = admincollection.InsertOne(ctx, admin)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to create admin user"})
 	}
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message":"admin created successfully"})
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "admin created successfully"})
 }
+

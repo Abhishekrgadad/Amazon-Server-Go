@@ -15,7 +15,7 @@ func Register(c *fiber.Ctx) error {
 	case "user":
 		return RegisterUserHandler(c)
 	case "admin":
-		return RegisterAdmin(c)
+		return RegisterAdminHandler(c)
 	default:
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error":"Invalid Role"})
 	}

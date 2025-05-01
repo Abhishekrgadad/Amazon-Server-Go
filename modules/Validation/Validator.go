@@ -12,15 +12,8 @@ func init(){
 	validate = validator.New()
 }
 
-func ValidateUser(User interface{}) error {
+func ValidateInputs(User interface{}) error {
 	if err := validate.Struct(User); err != nil {
-		return formatValidationError(err)
-	}
-	return nil
-}
-
-func ValidateAdmin(Admin interface{}) error {
-	if err := validate.Struct(Admin); err != nil{
 		return formatValidationError(err)
 	}
 	return nil
