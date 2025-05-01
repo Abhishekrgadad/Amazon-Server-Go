@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"server/config"
 	validation "server/modules/Validation"
@@ -164,3 +165,36 @@ func RegisterAdminHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "admin created successfully"})
 }
 
+func Login(input LoginRequest) (string,error) {
+	var collectionName string
+
+	switch input.Role {
+	case "user": 
+		collectionName = "users"
+	case "admin":
+		collectionName = "admins"
+	default: 
+		return "",errors.New("invalid role type")
+	}
+
+	collection := config.DB.Collection(collectionName)
+	ctx, cancel := context.WithTimeout(context.Background(),5*time.Second)
+	defer cancel()
+
+	var dbUser User
+	err := collection.FindOne(ctx,bson.M{"email":input.Email}).Decode(&dbUser)
+	if err != nil {
+		return "",errors.New("invalid email")
+	}
+	
+	if !CheckPassword(input.Password,dbUser.Password) {
+		return "", errors.New("invalid Password")
+	} 
+	
+	token ,err := config.GenerateToken(dbUser.Email,dbUser.Role)
+	if err != nil{
+		return "",errors.New("failed to generate JWT ")
+	}
+
+	return token, nil
+}
