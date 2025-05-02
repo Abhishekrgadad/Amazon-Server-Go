@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -165,36 +166,80 @@ func RegisterAdminHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{"message": "admin created successfully"})
 }
 
-func Login(input LoginRequest) (string,error) {
+func Login(input LoginRequest) (string, error) {
 	var collectionName string
 
 	switch input.Role {
-	case "user": 
+	case "user":
 		collectionName = "users"
 	case "admin":
 		collectionName = "admins"
-	default: 
-		return "",errors.New("invalid role type")
+	default:
+		return "", errors.New("invalid role type")
 	}
 
 	collection := config.DB.Collection(collectionName)
-	ctx, cancel := context.WithTimeout(context.Background(),5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	var dbUser User
-	err := collection.FindOne(ctx,bson.M{"email":input.Email}).Decode(&dbUser)
+	err := collection.FindOne(ctx, bson.M{"email": input.Email}).Decode(&dbUser)
 	if err != nil {
-		return "",errors.New("invalid email")
+		return "", errors.New("invalid email")
 	}
-	
-	if !CheckPassword(input.Password,dbUser.Password) {
+
+	if !CheckPassword(input.Password, dbUser.Password) {
 		return "", errors.New("invalid Password")
-	} 
-	
-	token ,err := config.GenerateToken(dbUser.Email,dbUser.Role)
-	if err != nil{
-		return "",errors.New("failed to generate JWT ")
+	}
+
+	token, err := config.GenerateToken(dbUser.Email, dbUser.Role)
+	if err != nil {
+		return "", errors.New("failed to generate JWT ")
 	}
 
 	return token, nil
+}
+
+func GetAllUsers() ([]Response, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	usercollection := config.DB.Collection("users")
+	cursor, err := usercollection.Find(ctx, bson.M{},options.Find().SetLimit(10).SetSort(bson.D{{Key:"name",Value:1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var users []Response
+	for cursor.Next(ctx) {
+		var user Response
+		if err := cursor.Decode(&user); err != nil {
+			continue
+		}
+		users = append(users, user)
+	}
+	return users, nil
+}
+
+func GetAllAdmins() ([]Response, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	admincollection := config.DB.Collection("admins")
+	cursor, err := admincollection.Find(ctx, bson.M{},options.Find().SetLimit(10).SetSort(bson.D{{Key: "name",Value: 1}}))
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var admins []Response
+	for cursor.Next(ctx) {
+		var admin Response
+		if err := cursor.Decode(&admin); err != nil {
+			continue
+		}
+		admins = append(admins, admin)
+	}
+	return admins, nil
 }

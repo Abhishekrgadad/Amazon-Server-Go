@@ -5,10 +5,10 @@ import "github.com/gofiber/fiber/v2"
 
 func AuthRoutes(router fiber.Router){
 	
-	register := router.Group("/register")
-	register.Post("/user",RegisterHandler)
-
-	login := router.Group("/login")
-	login.Post("/",LoginHandler)
+	root := router.Group("/auth")
+	root.Post("/register",RegisterHandler)
+	root.Post("/login",LoginHandler)
+	root.Get("/users",GetUserHandler)
+	root.Get("/admins",GetAdminHandler)
 }
 
