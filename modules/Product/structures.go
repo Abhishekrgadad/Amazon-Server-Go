@@ -9,6 +9,7 @@ type Product struct {
 	Price       float64            `bson:"price" json:"price" validate:"required,gt=0"`
 	Category    string             `bson:"category" json:"category" validate:"required"`
 	Stock       int                `bson:"stock" json:"stock" validate:"required,gte=0"`
+	Brand       string             `bson:"brand" json:"brand" validate:"required"`
+	Visiblity   bool               `bson:"visiblity" json:"visiblity" validate:"required"`
 	CreatedAt   primitive.DateTime `bson:"created_at,omitempty" json:"created_at,omitempty"`
 }
-
