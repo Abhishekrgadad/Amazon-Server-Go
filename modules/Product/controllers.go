@@ -46,3 +46,31 @@ func FilterProductHandler(c *fiber.Ctx) error {
 	}
 	return c.Status(fiber.StatusCreated).JSON(products)
 }
+
+func UpdateProductHandler(c *fiber.Ctx) error {
+
+	id := c.Query("id")
+	var updateData map[string]interface{}
+
+	if err := c.BodyParser(&updateData); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to parse json"})
+	}
+
+	err := UpdateProduct(id, updateData)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "failed to update products"})
+	}
+
+	return c.JSON(fiber.Map{"message": "Product updated successfully"})
+}
+
+func DeleteProductHandler(c *fiber.Ctx) error {
+
+	id := c.Query("id")
+
+	err := DeleteProduct(id)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"message": "failed to delete product"})
+	}
+	return c.JSON(fiber.Map{"message": "Product deleted successfully"})
+}

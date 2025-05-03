@@ -9,4 +9,6 @@ func ProductRoutes(router fiber.Router) {
 	root.Post("/add", AddProductHandler)
 	root.Get("/view", ViewProductHandler)
 	root.Get("/filter", FilterProductHandler)
+	root.Put("/update",UpdateProductHandler)
+	root.Delete("/delete",DeleteProductHandler)
 }

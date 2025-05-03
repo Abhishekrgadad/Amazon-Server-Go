@@ -1,0 +1,7 @@
+* Mongodb operations in the code with limiting factors.
+* Pagination code and logic
+* Mongodb opeartions 
+* error propogation
+* Type assertion
+* Go lang basic required.
+* Roles cant be updated to one another
