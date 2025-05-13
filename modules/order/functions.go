@@ -34,7 +34,10 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 		var product product.Product
 		err := config.DB.Collection("products").FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch product details: %v", err)
+			return nil, fmt.Errorf("failed to fetch product details: %v", item.ProductID.Hex())
+		}
+		if product.Price == 0 {
+			return nil, fmt.Errorf("product %v has an invalid price", item.ProductID.Hex())
 		}
 		subTotal := product.Price * float64(item.Quantity)
 		totalPrice += subTotal
@@ -56,6 +59,7 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	if address == "" {
 		orderAddress = user.ShippingAddress
 	}
+
 	var discount float64
 	var appliedCoupon string
 	if couponCode != "" {
@@ -74,17 +78,18 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 			return nil, fmt.Errorf("coupon is inactive or expired")
 		}
 		appliedCoupon = coupon.Code
-
 		if coupon.IsPercent {
 			discount = totalPrice * (coupon.Discount / 100)
 		} else {
 			discount = coupon.Discount
 		}
 	}
+
 	finalTotal := totalPrice - discount
 	if finalTotal < 0 {
 		finalTotal = 0
 	}
+
 	var cartItems []CartItem
 	for _, item := range updatedItems {
 		cartItems = append(cartItems, CartItem{
@@ -93,8 +98,25 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 			Quantity:    item.Quantity,
 			Price:       item.Price,
 		})
-	}
 
+		var product product.Product
+		err := config.DB.Collection("products").FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch product details for stock update: %v", item.ProductID.Hex())
+		}
+
+		if product.StockQuantity < item.Quantity {
+			return nil, fmt.Errorf("not enough stock for product %v", item.ProductID.Hex())
+		}
+
+		newStock := product.StockQuantity - item.Quantity
+		_, err = config.DB.Collection("products").UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{
+			"$set": bson.M{"stock": newStock},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to update stock for product %v: %v", item.ProductID.Hex(), err)
+		}
+	}
 	order := &Order{
 		ID:          primitive.NewObjectID(),
 		UserID:      userID,
@@ -114,6 +136,7 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	}
 	return order, nil
 }
+
 
 // Function for getting cart details by ID
 func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
@@ -204,11 +227,6 @@ func ReturnOrder(orderID primitive.ObjectID) error {
 	if order.Status != "Order Confirmed" && order.Status != "Delivered" {
 		return fmt.Errorf("order cannot be returned or return request is already done")
 	}
-
-	// if time.Since(order.CreatedAt) > 7*24*time.Hour {
-	// 	return fmt.Errorf("return period has expired")
-	// }
-
 	_, err = config.DB.Collection("orders").UpdateOne(ctx,
 		bson.M{"_id": orderID},
 		bson.M{"$set": bson.M{"status": "Returned"}})

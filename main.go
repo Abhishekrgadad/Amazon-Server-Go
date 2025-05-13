@@ -15,7 +15,6 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading .env file")
 	}
-
 	config.ConnectDatabase()
 	config.ConnectRedis()
 	app := fiber.New()

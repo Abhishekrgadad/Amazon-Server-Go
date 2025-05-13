@@ -211,7 +211,6 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 
 // Function to apply different filter products
 func FilterProductsHandler(c *fiber.Ctx) error {
-	fmt.Println("inside filter route")
 	name := c.Query("name")
 	category := c.Query("category")
 	brand := c.Query("brand")
@@ -232,22 +231,10 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid max_price value"})
 		}
 	}
-	cacheKey := fmt.Sprintf("filtered_products:name=%s:category=%s:brand=%s:minPrice=%.2f:maxPrice=%.2f", name, category, brand, minPrice, maxPrice)
-	ctx := context.Background()
-	cachedProducts, err := config.RedisClient.Get(ctx, cacheKey).Result()
-	if err == nil {
-		var productsFromCache []Product
-		if json.Unmarshal([]byte(cachedProducts), &productsFromCache) == nil {
-			return c.JSON(fiber.Map{"products": productsFromCache, "source": "cache"})
-		}
-	}
+	
 	products, err := FilteredProducts(name, category, brand, minPrice, maxPrice)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})
-	}
-	productsJSON, err := json.Marshal(products)
-	if err == nil {
-		config.RedisClient.Set(ctx, cacheKey, productsJSON, time.Minute*10)
 	}
 	return c.JSON(fiber.Map{"products": products})
 }

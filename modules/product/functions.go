@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"internal/coverage/rtcov"
 	"log"
+	"regexp"
+	"runtime/trace"
 	"time"
 
 	"server/config"
@@ -55,6 +58,7 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	return updateResult, nil
 }
 
+
 // Function to delete the product
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
@@ -104,6 +108,7 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	}
 	return products, totalCount, totalPages, nil
 }
+
 
 // Function to get a product by ID
 func GetProductByID(id string) (*Product, error) {
@@ -207,7 +212,8 @@ func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) 
 	} else if maxPrice > 0 {
 		filter["price"] = bson.M{"$lte": maxPrice}
 	}
-	cursor, err := collection.Find(ctx, filter)
+	limit := int64(20)
+	cursor, err := collection.Find(ctx, filter,options.Find().SetLimit(limit))
 	if err != nil {
 		log.Printf("MongoDB Find error: %v", err)
 		return nil, fmt.Errorf("failed to query products")
@@ -224,4 +230,3 @@ func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) 
 	}
 	return products, nil
 }
-

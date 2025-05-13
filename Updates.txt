@@ -1,3 +1,4 @@
+//Updates Resolved
 * updates on .config and add parameters.
 * update the redis client and auth details nano /etc/redis/redis.config
 * configure db internally and add the sample data
@@ -16,12 +17,10 @@
 * Check every endpoint and atlast to make sure everything is working fine.
 * Role based access need to be achieved if possible.
 * Update the Review module with its functions
-
-//Pending
 * add status as success and failure for respecitve responses for all responses.
 * update view cart by both userid and cartid
 * Filter is still not working as expected 
-* 
+* Update the stocks after successful order placed
 
 //Testing Done 
 - auth
@@ -29,3 +28,9 @@
 - Login 
 - Accounts
 - Cart 
+- Review
+- product
+- orders
+
+//Improvements
+* 

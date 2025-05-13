@@ -26,7 +26,7 @@ func CheckoutHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2025")
+	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2006")
 	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s", order.ID.Hex()))
 	return c.JSON(fiber.Map{
 		"message":           "Order Placed Successfully",
@@ -133,6 +133,6 @@ func ReturnOrderHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	websocket.CancelOrderNotification(fmt.Sprintf("📦 Order Returned initiated now.\n Refund will be initiated after the product received.\nOrder ID: %s", orderID.Hex()))
+	websocket.CancelOrderNotification(fmt.Sprintf("Order Returned initiated now.\n Refund will be initiated after the product received.\nOrder ID: %s", orderID.Hex()))
 	return c.JSON(fiber.Map{"message": "Order returned successfully"})
 }
