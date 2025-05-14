@@ -22,3 +22,15 @@ type ReviewRequest struct {
 	Rating    int    `json:"rating"`
 	Comment   string `json:"comment"`
 }
+
+type ViewReview struct {
+	Rating    int       `json:"rating"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `bson:"created_at" json:"created_at"`
+}
+
+type ReviewUpdate struct {
+	ProductID string `json:"product_id"`
+	Rating  int    `json:"rating"`
+	Comment string `json:"comment"`
+}

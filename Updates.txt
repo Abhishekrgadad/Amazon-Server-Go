@@ -28,6 +28,9 @@
 -> Make Review collection to store the reviews and show the review with the particular products
 -> User based Notification 
 ->Review crud operations
+->Remove the password from the response
+->In Review section of view option just show the productidwith comments and ratings.
+
 
 
 //Learn
