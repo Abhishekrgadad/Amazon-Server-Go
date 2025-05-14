@@ -46,6 +46,46 @@ func GenerateJWT(userID, email, role string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
+func IsEmailTaken(email string) (bool, error) {
+	collections := []string{"users", "sellers", "admins"}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	for _, colName := range collections {
+		collection := config.DB.Collection(colName)
+
+		if email != "" {
+			err := collection.FindOne(ctx, bson.M{"email": email}).Err()
+			if err == nil {
+				return true, nil 
+			} else if err != mongo.ErrNoDocuments {
+				return false, err
+			}
+		}
+	}
+	return false, nil 
+}
+
+func IsPhoneTaken(phone_number string) (bool, error) {
+	collections := []string{"users", "sellers", "admins"}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	for _, colName := range collections {
+		collection := config.DB.Collection(colName)
+
+		if phone_number != "" {
+			err := collection.FindOne(ctx, bson.M{"phone_number": phone_number}).Err()
+			if err == nil {
+				return true, nil 
+			} else if err != mongo.ErrNoDocuments {
+				return false, err 
+			}
+		}
+	}
+	return false, nil 
+}
+
 // Function generates reset tokens to reset the passwords.
 func GenerateResetToken(email, role string) (string, error) {
 	claims := jwt.MapClaims{
@@ -101,9 +141,8 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limitInt64 := int64(limit)
+	limit := int64(10)
+	skip := int64(page-1) * limit
 	totalCount, err := collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return nil, 0, 0, err
@@ -111,7 +150,7 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	// pagination
 	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
 		Skip:  &skip,
-		Limit: &limitInt64,
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, 0, 0, err
@@ -122,11 +161,6 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	if err = cursor.All(ctx, &users); err != nil {
 		return nil, 0, 0, err
 	}
-
-	totalPages := int(totalCount) / limit
-	if totalCount%int64(limit) != 0 {
-		totalPages++
-	}
 	return users, totalCount, len(users), nil
 }
 
@@ -136,9 +170,8 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limitInt64 := int64(limit)
+	limit := int64(10)
+	skip := int64(page-1) * limit
 	totalCount, err := collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return nil, 0, 0, err
@@ -146,7 +179,7 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	// pagination
 	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
 		Skip:  &skip,
-		Limit: &limitInt64,
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, 0, 0, err
@@ -157,11 +190,6 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	if err = cursor.All(ctx, &sellers); err != nil {
 		return nil, 0, 0, err
 	}
-
-	totalPages := int(totalCount) / limit
-	if totalCount%int64(limit) != 0 {
-		totalPages++
-	}
 	return sellers, totalCount, len(sellers), nil
 }
 
@@ -171,9 +199,8 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limitInt64 := int64(limit)
+	limit := int64(10)
+	skip := int64(page-1) * limit
 	totalCount, err := collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return nil, 0, 0, err
@@ -181,7 +208,7 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	// pagination
 	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
 		Skip:  &skip,
-		Limit: &limitInt64,
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, 0, 0, err
@@ -192,11 +219,6 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	if err = cursor.All(ctx, &admins); err != nil {
 		return nil, 0, 0, err
 	}
-
-	totalPages := int(totalCount) / limit
-	if totalCount%int64(limit) != 0 {
-		totalPages++
-	}
 	return admins, totalCount, len(admins), nil
 }
 
@@ -206,16 +228,21 @@ func RegisterUser(user User) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var existingUser User
-	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": user.Email},
-		{"phone_number": user.PhoneNumber},
-	}}).Decode(&existingUser)
-	if err == nil {
-		return nil, mongo.ErrClientDisconnected // we'll handle error message in controller
-	} else if err != mongo.ErrNoDocuments {
-		return nil, err
+	emailExist,err := IsEmailTaken(user.Email)
+	if emailExist{
+		return nil,errors.New("email already in use")
 	}
+	if err != nil{
+		return nil,err
+	}
+	phoneExist,err := IsPhoneTaken(user.PhoneNumber)
+	if phoneExist{
+		return nil,errors.New("phone already in use")
+	}
+	if err != nil{
+		return nil,err
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -234,18 +261,20 @@ func RegisterSeller(seller Seller) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var existingSeller Seller
-	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": seller.Email},
-		{"phone_number": seller.PhoneNumber},
-	}}).Decode(&existingSeller)
-
-	if err == nil {
-		return nil, mongo.ErrClientDisconnected
-	} else if err != mongo.ErrNoDocuments {
-		return nil, err
+	emailExist,err := IsEmailTaken(seller.Email)
+	if emailExist{
+		return nil,errors.New("email already in use")
 	}
-
+	if err != nil{
+		return nil,err
+	}
+	phoneExist,err := IsPhoneTaken(seller.PhoneNumber)
+	if phoneExist{
+		return nil,errors.New("phone already in use")
+	}
+	if err != nil{
+		return nil,err
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(seller.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -265,16 +294,21 @@ func RegisterAdmin(admin Admin) (interface{}, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var existingAdmin Admin
-	err := collection.FindOne(ctx, bson.M{"$or": []bson.M{
-		{"email": admin.Email},
-		{"phone_number": admin.PhoneNumber},
-	}}).Decode(&existingAdmin)
-	if err == nil {
-		return nil, mongo.ErrClientDisconnected
-	} else if err != mongo.ErrNoDocuments {
-		return nil, err
+	emailExist,err := IsEmailTaken(admin.Email)
+	if emailExist{
+		return nil,errors.New("email already in use")
 	}
+	if err != nil{
+		return nil,err
+	}
+	phoneExist,err := IsPhoneTaken(admin.PhoneNumber)
+	if phoneExist{
+		return nil,errors.New("phone already in use")
+	}
+	if err != nil{
+		return nil,err
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err

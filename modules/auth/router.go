@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"server/middlewares"
+
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -15,8 +15,6 @@ func SetupAuthRoutes(router fiber.Router) {
 	users.Get("/:id", GetUserHandler)
 	users.Put("/update/:id", UpdateUserHandler)
 	users.Delete("/delete/:id", DeleteUserHandler)
-
-	users.Get("/page:page", middlewares.JWTProtected("admin"), GetAllUsersHandler)
 
 	// Seller Routes
 	sellers := router.Group("/sellers")

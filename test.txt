@@ -1,0 +1,24 @@
+* Register and Login(user,seller,Admin)
+-> only one person can register in any of profiles
+-> Fields are validated for both
+-> Register or login with correct credentials
+-> CRUD operations for all three profiles
+-> Reset the password
+
+* Cart 
+-> CRUD operations on cart
+-> Get cart details by id
+-> Clear cart which erase all the products related to a particular user
+
+* Review 
+-> CRUD 
+-> view
+
+*Products 
+
+
+*Orders 
+
+
+*Coupons
+

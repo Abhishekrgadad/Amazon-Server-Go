@@ -115,7 +115,7 @@ func GetAllCartsHandler(c *fiber.Ctx) error {
 			var product product.Product
 			err := config.DB.Collection("products").FindOne(c.Context(), bson.M{"_id": item.ProductID}).Decode(&product)
 			if err != nil {
-				continue // Skip if product not found
+				continue 
 			}
 			subtotal := product.Price * float64(item.Quantity)
 			total += subtotal

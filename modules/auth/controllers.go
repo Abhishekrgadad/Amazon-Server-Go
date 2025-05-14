@@ -29,9 +29,6 @@ func RegisterUserHandler(c *fiber.Ctx) error {
 	}
 	id, err := RegisterUser(user)
 	if err != nil {
-		if err == mongo.ErrClientDisconnected {
-			return errors.ConflictError(c, "Email or phone number already registered")
-		}
 		return errors.InternalServerError(c, "Failed to register user: "+err.Error())
 	}
 	return c.JSON(fiber.Map{"message": "User registered successfully", "user_id": id})
@@ -48,9 +45,6 @@ func RegisterSellerHandler(c *fiber.Ctx) error {
 	}
 	id, err := RegisterSeller(seller)
 	if err != nil {
-		if err == mongo.ErrClientDisconnected {
-			return errors.ConflictError(c, "Email or phone number already registered")
-		}
 		return errors.InternalServerError(c, "Failed to register seller: "+err.Error())
 	}
 	return c.JSON(fiber.Map{"message": "Seller registered successfully", "seller_id": id})
@@ -67,9 +61,6 @@ func RegisterAdminHandler(c *fiber.Ctx) error {
 	}
 	id, err := RegisterAdmin(admin)
 	if err != nil {
-		if err == mongo.ErrClientDisconnected {
-			return errors.ConflictError(c, "Email or phone number already registered")
-		}
 		return errors.InternalServerError(c, "Failed to register admin: "+err.Error())
 	}
 	return c.JSON(fiber.Map{"message": "Admin registered successfully", "admin_id": id})

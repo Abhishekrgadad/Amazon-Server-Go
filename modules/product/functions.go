@@ -4,10 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"internal/coverage/rtcov"
 	"log"
-	"regexp"
-	"runtime/trace"
 	"time"
 
 	"server/config"

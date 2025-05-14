@@ -1,7 +1,5 @@
 //Updates Resolved
 * updates on .config and add parameters.
-* update the redis client and auth details nano /etc/redis/redis.config
-* configure db internally and add the sample data
 * add crud operations for each routes
 * try to achieve the role base access system
 * Work on JWT more its not working as expected
@@ -21,16 +19,19 @@
 * update view cart by both userid and cartid
 * Filter is still not working as expected 
 * Update the stocks after successful order placed
+-> one user can only create account in only one profile.
+-> verify exising user email and phone no. separately.
 
-//Testing Done 
-- auth
-- Register
-- Login 
-- Accounts
-- Cart 
-- Review
-- product
-- orders
 
-//Improvements
-* 
+
+//Updates Pending
+-> Make Review collection to store the reviews and show the review with the particular products
+-> User based Notification 
+->Review crud operations
+
+
+//Learn
+> why used interface as return statement in RegisterUser and below return as result.InsertedID
+--Because inteface takes any type which is better than defining a particular type. and result.InsertedID is comes from return of using mongo.inserOne method.
+> About the validator
+>

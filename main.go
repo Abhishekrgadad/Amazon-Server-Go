@@ -16,7 +16,7 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 	config.ConnectDatabase()
-	config.ConnectRedis()
+
 	app := fiber.New()
 
 	go websocket.StartBroadcast()

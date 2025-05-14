@@ -2,13 +2,9 @@ package product
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"server/errors"
 	"strconv"
-	"time"
 
-	"server/config"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -41,33 +37,12 @@ func GetProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	cacheKey := "products:page:" + strconv.Itoa(page)
-	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
-	if err == nil {
-		var productsFromCache []Product
-		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
-		if err == nil {
-			return c.JSON(fiber.Map{
-				"data":        productsFromCache,
-				"source":      "cache",
-				"total_count": len(productsFromCache),
-			})
-		}
-	}
+	
 	products, totalCount, totalPages, err := GetProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
-	productsJSON, err := json.Marshal(products)
-	if err != nil {
-		fmt.Printf("Error serializing products for Redis: %v\n", err)
-		return errors.InternalServerError(c, "Failed to cache products")
-	}
-	err = config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10).Err()
-	if err != nil {
-		config.ReconnectRedis()
-		return errors.InternalServerError(c, "Failed to cache products")
-	}
+	
 	return c.JSON(fiber.Map{
 		"data":         products,
 		"total_count":  totalCount,
@@ -79,22 +54,12 @@ func GetProductsHandler(c *fiber.Ctx) error {
 // Function to get a product by ID
 func GetProductByIDHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
-	cacheKey := "product:id:" + id
-	cachedProduct, err := config.RedisClient.Get(Ctx, cacheKey).Result()
-	if err == nil {
-		var productFromCache Product
-		if json.Unmarshal([]byte(cachedProduct), &productFromCache) == nil {
-			return c.JSON(productFromCache)
-		}
-	}
+	
 	product, err := GetProductByID(id)
 	if err != nil {
 		return errors.NotFoundError(c, err.Error())
 	}
-	productJSON, err := json.Marshal(product)
-	if err == nil {
-		config.RedisClient.Set(Ctx, cacheKey, productJSON, time.Minute*10)
-	}
+	
 	return c.JSON(product)
 }
 
@@ -132,20 +97,7 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	cacheKey := "active_products:page:" + strconv.Itoa(page)
-	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
-	if err == nil {
-		var productsFromCache []Product
-		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
-		if err == nil {
-			return c.JSON(fiber.Map{
-				"data":         productsFromCache,
-				"source":       "cache",
-				"current_page": page,
-				"total_count":  len(productsFromCache),
-			})
-		}
-	}
+	
 	products, totalCount, limit, err := GetActiveProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to fetch active products")
@@ -153,10 +105,7 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 	if len(products) == 0 {
 		return errors.NotFoundError(c, "No active products found")
 	}
-	productsJSON, err := json.Marshal(products)
-	if err == nil {
-		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
-	}
+	
 	return c.JSON(fiber.Map{
 		"products":    products,
 		"message":     "Active products",
@@ -173,20 +122,7 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	cacheKey := "inactive_products:page:" + strconv.Itoa(page)
-	cachedProducts, err := config.RedisClient.Get(Ctx, cacheKey).Result()
-	if err == nil {
-		var productsFromCache []Product
-		err = json.Unmarshal([]byte(cachedProducts), &productsFromCache)
-		if err == nil {
-			return c.JSON(fiber.Map{
-				"data":         productsFromCache,
-				"source":       "cache",
-				"current_page": page,
-				"total_count":  len(productsFromCache),
-			})
-		}
-	}
+	
 	products, totalCount, err := GetInActiveProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to fetch active products")
@@ -196,10 +132,7 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 		return errors.NotFoundError(c, "No active products found")
 	}
 
-	productsJSON, err := json.Marshal(products)
-	if err == nil {
-		config.RedisClient.Set(Ctx, cacheKey, productsJSON, time.Minute*10)
-	}
+	
 
 	return c.JSON(fiber.Map{
 		"products":    products,

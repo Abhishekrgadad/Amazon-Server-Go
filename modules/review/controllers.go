@@ -31,3 +31,15 @@ func GetProductReviewsHandler(c *fiber.Ctx) error {
 	}
 	return c.JSON(reviews)
 }
+
+func UpdateReviewHandler(c *fiber.Ctx) error {
+	productID,err := primitive.ObjectIDFromHex(c.Params("product_id"))
+	if err != nil{
+		return c.Status(400).JSON(fiber.Map{"error":"Failed to parse productid"})
+	}
+	review,err := UpdateReview(productID)
+	if err != nil{
+		return c.Status(400).JSON(fiber.Map{"error":"failed to update the product review"})
+	}
+	return c.JSON(review)
+}	

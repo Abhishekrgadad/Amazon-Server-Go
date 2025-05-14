@@ -24,8 +24,11 @@ func AddReview(req ReviewRequest) error {
         return err
     }
     orderCollection := config.DB.Collection("orders")
+    ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+    defer cancel()
+
     var order order.Order
-    err = orderCollection.FindOne(context.TODO(), bson.M{
+    err = orderCollection.FindOne(ctx, bson.M{
         "_id": orderID,
         "items.product_id": productID,
     }).Decode(&order)
@@ -54,13 +57,13 @@ func AddReview(req ReviewRequest) error {
         Comment:   req.Comment,
         CreatedAt: time.Now(),
     }
-    _, err = config.DB.Collection("reviews").InsertOne(context.TODO(), review)
+    _, err = config.DB.Collection("reviews").InsertOne(ctx, review)
     if err != nil {
         return err
     }
     productCollection := config.DB.Collection("products")
     var product product.Product
-    err = productCollection.FindOne(context.TODO(), bson.M{"_id": productID}).Decode(&product)
+    err = productCollection.FindOne(ctx, bson.M{"_id": productID}).Decode(&product)
     if err != nil {
         return err
     }
@@ -102,4 +105,33 @@ func GetReviewsByProduct(productID primitive.ObjectID) ([]Review, error) {
 		return nil, err
 	}
 	return reviews, nil
+}
+
+func UpdateReview(productID primitive.ObjectID,updateData Review) error {
+    ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+    defer cancel()
+
+    collection := config.DB.Collection("reviews")
+
+    filter := bson.M{"product_id":productID}
+    update := bson.M{"$set":updateData}
+
+    _,err := collection.UpdateOne(ctx,filter,update)
+    if err !=nil{
+        return fmt.Errorf("Failed to update")
+    }
+    return nil
+}
+
+func DeleteReview(productID primitive.ObjectID) error{
+    ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
+    defer cancel()
+
+    collection := config.DB.Collection("reviews")
+    filter := bson.M{"product_id":productID}
+    _,err := collection.DeleteOne(ctx,filter)
+    if err != nil{
+        return fmt.Errorf("failed to delete a review")
+    }
+    return nil
 }
