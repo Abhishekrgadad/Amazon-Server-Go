@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"server/config"
-	"server/modules/auth"
 	"server/modules/cart"
 	"server/modules/coupons"
 	"server/modules/product"
@@ -17,7 +16,7 @@ import (
 
 // Function for placing order with the product details and price
 func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponCode string) (*Order, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
 	defer cancel()
 
 	cartdata, err := GetCartByID(cartID)
@@ -29,10 +28,11 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	}
 	totalPrice := 0.0
 
+	prodcollection := config.DB.Collection("products")
 	var updatedItems []CartItemResponse
 	for _, item := range cartdata.Items {
 		var product product.Product
-		err := config.DB.Collection("products").FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		err := prodcollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch product details: %v", item.ProductID.Hex())
 		}
@@ -62,9 +62,10 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 
 	var discount float64
 	var appliedCoupon string
+	couponcollection := config.DB.Collection("coupons")
 	if couponCode != "" {
 		var coupon coupons.Coupon
-		err := config.DB.Collection("coupons").FindOne(ctx, bson.M{
+		err := couponcollection.FindOne(ctx, bson.M{
 			"code":        couponCode,
 			"active":      true,
 			"expiry_date": bson.M{"$gt": time.Now()},
@@ -100,7 +101,7 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 		})
 
 		var product product.Product
-		err := config.DB.Collection("products").FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		err := prodcollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch product details for stock update: %v", item.ProductID.Hex())
 		}
@@ -109,13 +110,26 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 			return nil, fmt.Errorf("not enough stock for product %v", item.ProductID.Hex())
 		}
 
-		newStock := product.StockQuantity - item.Quantity
-		_, err = config.DB.Collection("products").UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{
-			"$set": bson.M{"stock": newStock},
+		StockQuantity := product.StockQuantity - item.Quantity
+		_, err = prodcollection.UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{	
+			"$set": bson.M{"stock_quantity": StockQuantity},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to update stock for product %v: %v", item.ProductID.Hex(), err)
 		}
+		// err = prodcollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		// if err != nil {
+		// 	return nil, fmt.Errorf("failed to fetch product details for stock update: %v", item.ProductID.Hex())
+		// }
+		if product.StockQuantity == 0 {
+			_, err := prodcollection.UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{
+				"$set": bson.M{"visibility": false},
+			})
+			if err != nil {
+				return nil, fmt.Errorf("failed to update stock for product %v: %v", item.ProductID.Hex(), err)
+			}
+		}
+
 	}
 	order := &Order{
 		ID:          primitive.NewObjectID(),
@@ -137,7 +151,6 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	return order, nil
 }
 
-
 // Function for getting cart details by ID
 func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -152,11 +165,11 @@ func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
 }
 
 // Function for getting user details whos order is placed
-func GetUserDetails(userID primitive.ObjectID) (auth.User, error) {
+func GetUserDetails(userID primitive.ObjectID) (User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	var user auth.User
+	var user User
 	err := config.DB.Collection("users").FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	return user, err
 }
@@ -174,8 +187,8 @@ func ViewAllOrders(userID primitive.ObjectID, page int) ([]Order, int64, int64, 
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count orders: %v", err)
 	}
-	findOptions := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.M{"created_at": -1})
-	cursor, err := collection.Find(ctx, filter, findOptions)
+	opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(bson.M{"name": 1})
+	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch orders: %v", err)
 	}

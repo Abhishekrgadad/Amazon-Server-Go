@@ -65,10 +65,11 @@ func AddToCart(userID primitive.ObjectID, items []CartItem) (*AddCartResponse, e
 			Name  string  `bson:"name"`
 			Price float64 `bson:"price"`
 		}
-		err := productCollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		err := productCollection.FindOne(ctx, bson.M{"_id": item.ProductID, "visibility": true}).Decode(&product)
 		if err != nil {
 			continue
 		}
+
 		subtotal := float64(item.Quantity) * product.Price
 		total += subtotal
 

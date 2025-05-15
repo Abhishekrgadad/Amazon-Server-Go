@@ -5,13 +5,11 @@ import (
 	"server/errors"
 	"strconv"
 
-
 	"github.com/gofiber/fiber/v2"
 )
 
 var Ctx = context.Background()
 
-// Function to add a new product
 func AddProductHandler(c *fiber.Ctx) error {
 	var product Product
 	if err := c.BodyParser(&product); err != nil {
@@ -30,19 +28,18 @@ func AddProductHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get all products
 func GetProductsHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	
+
 	products, totalCount, totalPages, err := GetProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, err.Error())
 	}
-	
+
 	return c.JSON(fiber.Map{
 		"data":         products,
 		"total_count":  totalCount,
@@ -51,15 +48,12 @@ func GetProductsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get a product by ID
 func GetProductByIDHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
-	
 	product, err := GetProductByID(id)
 	if err != nil {
-		return errors.NotFoundError(c, err.Error())
+		return errors.InternalServerError(c, err.Error())
 	}
-	
 	return c.JSON(product)
 }
 
@@ -97,15 +91,13 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	
 	products, totalCount, limit, err := GetActiveProducts(page)
 	if err != nil {
-		return errors.InternalServerError(c, "Failed to fetch active products")
+		return errors.InternalServerError(c, "Failed to fetch products")
 	}
 	if len(products) == 0 {
 		return errors.NotFoundError(c, "No active products found")
 	}
-	
 	return c.JSON(fiber.Map{
 		"products":    products,
 		"message":     "Active products",
@@ -122,17 +114,15 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	
+
 	products, totalCount, err := GetInActiveProducts(page)
 	if err != nil {
-		return errors.InternalServerError(c, "Failed to fetch active products")
+		return errors.InternalServerError(c, "Failed to fetch products")
 	}
 
 	if len(products) == 0 {
 		return errors.NotFoundError(c, "No active products found")
 	}
-
-	
 
 	return c.JSON(fiber.Map{
 		"products":    products,
@@ -164,7 +154,7 @@ func FilterProductsHandler(c *fiber.Ctx) error {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid max_price value"})
 		}
 	}
-	
+
 	products, err := FilteredProducts(name, category, brand, minPrice, maxPrice)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": err.Error()})

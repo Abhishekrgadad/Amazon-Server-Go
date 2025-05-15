@@ -1,28 +1,25 @@
 package order
 
 import (
-	"context"
 	"fmt"
-	"server/config"
 	"server/errors"
 	"server/modules/websocket"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // Function to place the order
 func CheckoutHandler(c *fiber.Ctx) error {
-	var req CheckoutRequest
-	if err := c.BodyParser(&req); err != nil {
+	var request CheckoutRequest
+	if err := c.BodyParser(&request); err != nil {
 		return errors.InternalServerError(c, "Invalid Request")
 	}
-	userID, _ := primitive.ObjectIDFromHex(req.UserID)
-	cartID, _ := primitive.ObjectIDFromHex(req.CartID)
-	order, err := PlaceOrder(userID, cartID, req.PaymentType, req.Address, req.CouponCode)
+	userID, _ := primitive.ObjectIDFromHex(request.UserID)
+	cartID, _ := primitive.ObjectIDFromHex(request.CartID)
+	order, err := PlaceOrder(userID, cartID, request.PaymentType, request.Address, request.CouponCode)
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -33,34 +30,6 @@ func CheckoutHandler(c *fiber.Ctx) error {
 		"expected_delivery": deliveryDate,
 		"order":             order,
 	})
-}
-
-// Function for order status
-func OrderStatusHandler(c *fiber.Ctx) error {
-	orderID := c.Params("order_id")
-
-	go func(orderID string) {
-		time.Sleep(10 * time.Second)
-		UpdateOrderStatus(orderID, "Shipped")
-		time.Sleep(10 * time.Second)
-		UpdateOrderStatus(orderID, "Out for Delivery")
-		time.Sleep(10 * time.Second)
-		UpdateOrderStatus(orderID, "Delivered")
-	}(orderID)
-	return c.JSON(fiber.Map{
-		"status": "Order Confirmed",
-		"date":   time.Now().Format("02-Jan-2006 15:04:05"),
-	})
-}
-
-// Function for updating order status
-func UpdateOrderStatus(orderID string, status string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	orderObjID, _ := primitive.ObjectIDFromHex(orderID)
-	_, err := config.DB.Collection("orders").UpdateOne(ctx, bson.M{"_id": orderObjID}, bson.M{"$set": bson.M{"status": status}})
-	return err
 }
 
 // Function to view placed orders

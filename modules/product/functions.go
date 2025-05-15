@@ -15,7 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Function for adding a new product
 func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -33,7 +32,6 @@ func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	return result, nil
 }
 
-// Function to update the product
 func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -55,8 +53,6 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	return updateResult, nil
 }
 
-
-// Function to delete the product
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -73,22 +69,20 @@ func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	return deleteResult, nil
 }
 
-// Function to get all products
 func GetProducts(page int) ([]Product, int64, int, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	limit := 10
-	skip := int64((page - 1) * limit)
-	limitInt64 := int64(limit)
+	limit := int64(10)
+	skip := int64(page-1) * limit
 	totalCount, err := collection.CountDocuments(ctx, bson.M{})
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
 	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
 		Skip:  &skip,
-		Limit: &limitInt64,
+		Limit: &limit,
 	})
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
@@ -99,15 +93,13 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to parse data: %v", err)
 	}
-	totalPages := int(totalCount / int64(limit))
-	if totalCount%int64(limit) != 0 {
+	totalPages := int(totalCount / limit)
+	if totalCount%limit != 0 {
 		totalPages++
 	}
 	return products, totalCount, totalPages, nil
 }
 
-
-// Function to get a product by ID
 func GetProductByID(id string) (*Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -128,23 +120,20 @@ func GetProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
-// Function to get all active products
 func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	limit := int64(10)
-	skip := int64((page - 1) * int(limit))
+	skip := int64(page-1) * limit
 	filter := bson.M{"visibility": true}
 	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	findOptions := options.Find()
-	findOptions.SetSkip(skip)
-	findOptions.SetLimit(limit)
-	cursor, err := collection.Find(ctx, filter, findOptions)
+	opts := options.Find().SetLimit(limit).SetSkip(skip)
+	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
@@ -157,23 +146,20 @@ func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	return products, totalCount, limit, nil
 }
 
-// Function to get all inactive products
 func GetInActiveProducts(page int) ([]Product, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	limit := int64(10)
-	skip := int64((page - 1) * int(limit))
+	skip := int64(page-1) * limit
 	filter := bson.M{"visibility": false}
 	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	findOptions := options.Find()
-	findOptions.SetSkip(skip)
-	findOptions.SetLimit(limit)
-	cursor, err := collection.Find(ctx, filter, findOptions)
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "name",Value: 1}})
+	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
@@ -186,7 +172,6 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 	return products, totalCount, nil
 }
 
-// Function to get filtered products
 func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -209,8 +194,9 @@ func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) 
 	} else if maxPrice > 0 {
 		filter["price"] = bson.M{"$lte": maxPrice}
 	}
-	limit := int64(20)
-	cursor, err := collection.Find(ctx, filter,options.Find().SetLimit(limit))
+	limit := int64(10)
+	opts := options.Find().SetSort(bson.D{{Key: "name",Value: 1}}).SetLimit(limit)
+	cursor, err := collection.Find(ctx, filter,opts)
 	if err != nil {
 		log.Printf("MongoDB Find error: %v", err)
 		return nil, fmt.Errorf("failed to query products")

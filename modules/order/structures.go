@@ -1,7 +1,6 @@
 package order
 
 import (
-	"server/modules/auth"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -40,7 +39,7 @@ type Order struct {
 	CouponCode  string             `bson:"coupon_code" json:"coupon_code"`
 	Discount    float64            `bson:"discount" json:"discount"`
 	Status      string             `bson:"status" json:"status"`
-	UserDetails auth.User          `bson:"user_details" json:"user_details"`
+	UserDetails User        `bson:"user_details" json:"user_details"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
 }
 
@@ -69,4 +68,11 @@ type OrderNotification struct {
 type CancelOrderRequest struct {
 	OrderID string `json:"order_id"`
 	UserID  string `json:"user_id"`
+}
+
+type User struct {
+	FullName        string             `json:"full_name" bson:"full_name" validate:"required,min=3,max=20"`
+	Email           string             `json:"email" bson:"email" validate:"required,email"`
+	PhoneNumber     string             `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
+	ShippingAddress string             `json:"shipping_address" bson:"shipping_address"`
 }

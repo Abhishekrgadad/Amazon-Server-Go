@@ -1,40 +1,21 @@
-//Updates Resolved
-* updates on .config and add parameters.
-* add crud operations for each routes
-* try to achieve the role base access system
-* Work on JWT more its not working as expected
-* try to add featuers of notifications for orders movement
-* simulate the payment transactions 
-* apply pagination for all the required endpoints
-* maintain clean code with reuse of code and snippets
-* update the code to auto update the stocks available in products.
-* Checking for all handler that seggregation is perfect between them.
-* update the structure.go file of orders and remove the cartitems and cartitemresponse etc.
-* create a new folder as validation and reuse it in different files.
-* Check the products filter endpoint its not working as expected.
-* Check every endpoint and atlast to make sure everything is working fine.
-* Role based access need to be achieved if possible.
-* Update the Review module with its functions
-* add status as success and failure for respecitve responses for all responses.
-* update view cart by both userid and cartid
-* Filter is still not working as expected 
-* Update the stocks after successful order placed
--> one user can only create account in only one profile.
--> verify exising user email and phone no. separately.
-
-
 
 //Updates Pending
 -> Make Review collection to store the reviews and show the review with the particular products
 -> User based Notification 
 ->Review crud operations
-->Remove the password from the response
-->In Review section of view option just show the productidwith comments and ratings.
-
+->Remove the password from the response.
+->show latest comment in the product view.
+->Update the products quantity after successful ordering.
+-> after updating the stock quantity how it is updating itself with higher value
 
 
 //Learn
-> why used interface as return statement in RegisterUser and below return as result.InsertedID
---Because inteface takes any type which is better than defining a particular type. and result.InsertedID is comes from return of using mongo.inserOne method.
-> About the validator
->
+
+
+
+
+//Done ---------
+->Auth
+->cart
+->Review
+->Product

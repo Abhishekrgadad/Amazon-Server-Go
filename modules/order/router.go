@@ -8,7 +8,6 @@ func SetupOrderRoutes(router fiber.Router) {
 
 	order := router.Group("/order")
 	order.Post("/checkout", CheckoutHandler)
-	order.Post("/status",OrderStatusHandler)
 	order.Get("/view", ViewOrdersHandler)
 	order.Post("/cancel", CancelOrderHandler)
 	order.Post("/return", ReturnOrderHandler)

@@ -82,7 +82,7 @@ func AddReview(request ReviewRequest) error {
 			},
 		},
 	}
-	_, err = productCollection.UpdateOne(context.TODO(), bson.M{"_id": productID}, update)
+	_, err = productCollection.UpdateOne(ctx, bson.M{"_id": productID}, update)
 	if err != nil {
 		return fmt.Errorf("failed to update product: %v", err)
 	}
