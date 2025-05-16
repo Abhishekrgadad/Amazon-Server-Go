@@ -2,7 +2,6 @@ package product
 
 import (
 	"errors"
-	"fmt"
 )
 
 func ValidateProduct(product *Product) error {
@@ -25,14 +24,4 @@ func ValidateProduct(product *Product) error {
 		return errors.New("product category is required")
 	}
 	return nil
-}
-
-func ValidateProductVisibility(visibility string) error {
-	validVisibilities := []string{"active", "inactive"}
-	for _, v := range validVisibilities {
-		if visibility == v {
-			return nil
-		}
-	}
-	return fmt.Errorf("invalid visibility status: must be 'active' or 'inactive'")
 }
