@@ -18,7 +18,7 @@ type CartItem struct {
 	ProductID   primitive.ObjectID `bson:"product_id" json:"product_id"`
 	ProductName string             `json:"product_name"`
 	Quantity    int                `bson:"quantity" json:"quantity"`
-	Price       float64            `bson:"price" json:"price"` // added for order item price
+	Price       float64            `bson:"price" json:"price"`
 }
 
 type CartItemResponse struct {
@@ -39,21 +39,8 @@ type Order struct {
 	CouponCode  string             `bson:"coupon_code" json:"coupon_code"`
 	Discount    float64            `bson:"discount" json:"discount"`
 	Status      string             `bson:"status" json:"status"`
-	UserDetails User        `bson:"user_details" json:"user_details"`
+	UserDetails User               `bson:"user_details" json:"user_details"`
 	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
-}
-
-type ViewOrdersRequest struct {
-	UserID string `json:"user_id"`
-}
-
-type CancelRequest struct {
-	OrderID string `json:"order_id"`
-	UserID  string `json:"user_id"`
-}
-
-type ReturnRequest struct {
-	OrderID string `json:"order_id"`
 }
 
 type OrderNotification struct {
@@ -65,14 +52,9 @@ type OrderNotification struct {
 	CreatedAt  string      `json:"created_at"`
 }
 
-type CancelOrderRequest struct {
-	OrderID string `json:"order_id"`
-	UserID  string `json:"user_id"`
-}
-
 type User struct {
-	FullName        string             `json:"full_name" bson:"full_name" validate:"required,min=3,max=20"`
-	Email           string             `json:"email" bson:"email" validate:"required,email"`
-	PhoneNumber     string             `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
-	ShippingAddress string             `json:"shipping_address" bson:"shipping_address"`
+	FullName        string `json:"full_name" bson:"full_name" validate:"required,min=3,max=20"`
+	Email           string `json:"email" bson:"email" validate:"required,email"`
+	PhoneNumber     string `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
+	ShippingAddress string `json:"shipping_address" bson:"shipping_address"`
 }

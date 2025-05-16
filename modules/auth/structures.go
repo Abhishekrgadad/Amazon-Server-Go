@@ -59,3 +59,16 @@ type UpdatePasswordRequest struct {
 	ResetToken  string `json:"reset_token"`
 	NewPassword string `json:"new_password"`
 }
+type AuthEntity interface {
+	GetID() primitive.ObjectID
+	GetPassword() string
+}
+
+func (u *User) GetID() primitive.ObjectID     { return u.ID }
+func (u *User) GetPassword() string           { return u.Password }
+
+func (s *Seller) GetID() primitive.ObjectID   { return s.ID }
+func (s *Seller) GetPassword() string         { return s.Password }
+
+func (a *Admin) GetID() primitive.ObjectID    { return a.ID }
+func (a *Admin) GetPassword() string          { return a.Password }

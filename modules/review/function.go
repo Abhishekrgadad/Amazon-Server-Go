@@ -24,7 +24,7 @@ func AddReview(request ReviewRequest) error {
 		return err
 	}
 	orderCollection := config.DB.Collection("orders")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var order order.Order
@@ -90,7 +90,7 @@ func AddReview(request ReviewRequest) error {
 }
 
 func GetReviewsByProduct(productID primitive.ObjectID) ([]ViewReview, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cursor, err := config.DB.Collection("reviews").Find(ctx, bson.M{"product_id": productID})
@@ -107,7 +107,7 @@ func GetReviewsByProduct(productID primitive.ObjectID) ([]ViewReview, error) {
 }
 
 func UpdateReview(productID primitive.ObjectID, updateData ReviewUpdate) (ReviewUpdate, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	collection := config.DB.Collection("reviews")
@@ -120,16 +120,16 @@ func UpdateReview(productID primitive.ObjectID, updateData ReviewUpdate) (Review
 		return ReviewUpdate{}, fmt.Errorf("failed to update review")
 	}
 
-    var UpdateReview ReviewUpdate
-    err = collection.FindOne(ctx,filter).Decode(&UpdateReview)
-    if err != nil{
-        return ReviewUpdate{}, fmt.Errorf("failed to fetch the review")
-    }
-    return UpdateReview,nil
+	var UpdateReview ReviewUpdate
+	err = collection.FindOne(ctx, filter).Decode(&UpdateReview)
+	if err != nil {
+		return ReviewUpdate{}, fmt.Errorf("failed to fetch the review")
+	}
+	return UpdateReview, nil
 }
 
 func DeleteReview(productID primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	collection := config.DB.Collection("reviews")

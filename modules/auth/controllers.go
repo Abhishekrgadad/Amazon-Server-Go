@@ -18,7 +18,6 @@ import (
 
 var validate = validator.New()
 
-// Function to register a user
 func RegisterUserHandler(c *fiber.Ctx) error {
 	var user User
 	if err := c.BodyParser(&user); err != nil {
@@ -34,7 +33,6 @@ func RegisterUserHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "User registered successfully", "user_id": id})
 }
 
-// Function to register a seller
 func RegisterSellerHandler(c *fiber.Ctx) error {
 	var seller Seller
 	if err := c.BodyParser(&seller); err != nil {
@@ -50,7 +48,6 @@ func RegisterSellerHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Seller registered successfully", "seller_id": id})
 }
 
-// Function to register an admin
 func RegisterAdminHandler(c *fiber.Ctx) error {
 	var admin Admin
 	if err := c.BodyParser(&admin); err != nil {
@@ -66,30 +63,32 @@ func RegisterAdminHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Admin registered successfully", "admin_id": id})
 }
 
-// Function to login a user, seller, or admin
 func LoginHandler(c *fiber.Ctx) error {
 	var loginData LoginRequest
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	if err := c.BodyParser(&loginData); err != nil {
 		return errors.BadRequestError(c, "Invalid request data")
 	}
+
 	var collection *mongo.Collection
-	var user interface{}
+	var entity AuthEntity
 	switch loginData.Role {
 	case "user":
 		collection = config.DB.Collection("users")
-		user = &User{}
+		entity = &User{}
 	case "seller":
 		collection = config.DB.Collection("sellers")
-		user = &Seller{}
+		entity = &Seller{}
 	case "admin":
 		collection = config.DB.Collection("admins")
-		user = &Admin{}
+		entity = &Admin{}
 	default:
 		return errors.BadRequestError(c, "Invalid role type")
 	}
-	err := collection.FindOne(ctx, bson.M{"email": loginData.Email}).Decode(user)
+
+	err := collection.FindOne(ctx, bson.M{"email": loginData.Email}).Decode(entity)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return errors.UnauthorizedError(c, "Invalid credentials")
@@ -97,35 +96,21 @@ func LoginHandler(c *fiber.Ctx) error {
 		return errors.InternalServerError(c, "Database error")
 	}
 
-	var hashedPassword string
-	switch u := user.(type) {
-	case *User:
-		hashedPassword = u.Password
-	case *Seller:
-		hashedPassword = u.Password
-	case *Admin:
-		hashedPassword = u.Password
-	}
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(loginData.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(entity.GetPassword()), []byte(loginData.Password)); err != nil {
 		return errors.UnauthorizedError(c, "Invalid credentials")
 	}
-	var userID string
-	switch u := user.(type) {
-	case *User:
-		userID = u.ID.Hex()
-	case *Seller:
-		userID = u.ID.Hex()
-	case *Admin:
-		userID = u.ID.Hex()
-	}
-	token, err := config.GenerateJWT(userID, loginData.Email, loginData.Role)
+
+	token, err := config.GenerateJWT(entity.GetID().Hex(), loginData.Email, loginData.Role)
 	if err != nil {
 		return errors.InternalServerError(c, "Could not generate token")
 	}
-	return c.JSON(fiber.Map{"message": "Login successful", "token": token})
+
+	return c.JSON(fiber.Map{
+		"message": "Login successful",
+		"token":   token,
+	})
 }
 
-// Function to Reset Password
 func RequestPasswordReset(c *fiber.Ctx) error {
 	var request ResetRequest
 	if err := c.BodyParser(&request); err != nil {
@@ -135,7 +120,7 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	if collection == nil {
 		return errors.BadRequestError(c, "Invalid role type")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var user User
@@ -161,7 +146,6 @@ func RequestPasswordReset(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Password reset token generated", "reset_token": resetToken})
 }
 
-// Function to update password
 func UpdatePassword(c *fiber.Ctx) error {
 	var request UpdatePasswordRequest
 	if err := c.BodyParser(&request); err != nil {
@@ -171,7 +155,7 @@ func UpdatePassword(c *fiber.Ctx) error {
 	if collection == nil {
 		return errors.BadRequestError(c, "Invalid role type")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var user User
@@ -193,7 +177,6 @@ func UpdatePassword(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Password updated successfully. Please log in again."})
 }
 
-// Function to get the collection based on role
 func GetAllUsersHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
@@ -212,7 +195,6 @@ func GetAllUsersHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get Users
 func GetUserHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("users")
@@ -220,7 +202,7 @@ func GetUserHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return errors.BadRequestError(c, "Invalid user ID")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	var user bson.M
 	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&user)
@@ -242,7 +224,7 @@ func UpdateUserHandler(c *fiber.Ctx) error {
 		return errors.BadRequestError(c, "Invalid request data")
 	}
 	delete(updateData, "email")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_, err = collection.UpdateOne(ctx, bson.M{"_id": objID}, bson.M{"$set": updateData})
 	if err != nil {
@@ -254,7 +236,7 @@ func UpdateUserHandler(c *fiber.Ctx) error {
 func DeleteUserHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -285,11 +267,10 @@ func GetAllSellerHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get Sellers
 func GetSellerHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objID, err := primitive.ObjectIDFromHex(id)
@@ -306,11 +287,10 @@ func GetSellerHandler(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-// Function to update Sellers
 func UpdateSellerHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objID, err := primitive.ObjectIDFromHex(id)
@@ -332,11 +312,10 @@ func UpdateSellerHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Seller updated successfully"})
 }
 
-// Function to Delete Sellers
 func DeleteSellerHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -349,7 +328,6 @@ func DeleteSellerHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Seller deleted successfully"})
 }
 
-// Function to get all admins
 func GetAllAdminsHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
@@ -369,11 +347,10 @@ func GetAllAdminsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get Admins
 func GetAdminHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
@@ -387,11 +364,10 @@ func GetAdminHandler(c *fiber.Ctx) error {
 	return c.JSON(user)
 }
 
-// Function to update Admins
 func UpdateAdminHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objID, err := primitive.ObjectIDFromHex(id)
@@ -411,11 +387,10 @@ func UpdateAdminHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Admin updated successfully"})
 }
 
-// Function to Delete Admins
 func DeleteAdminHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objID, err := primitive.ObjectIDFromHex(id)

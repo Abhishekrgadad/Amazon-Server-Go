@@ -17,18 +17,15 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Hash the password in bytes with defaultcost:10 (complexity)
 func HashPassword(password string) (string, error) {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(bytes), err
 }
 
-// Function compares the hashed string password with the user entered password for authentication
 func ComparePassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-// Function generates the tokens after login successful
 func GenerateJWT(userID, email, role string) (string, error) {
 	err := godotenv.Load()
 	if err != nil {
@@ -48,7 +45,7 @@ func GenerateJWT(userID, email, role string) (string, error) {
 
 func IsEmailTaken(email string) (bool, error) {
 	collections := []string{"users", "sellers", "admins"}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	for _, colName := range collections {
@@ -57,18 +54,18 @@ func IsEmailTaken(email string) (bool, error) {
 		if email != "" {
 			err := collection.FindOne(ctx, bson.M{"email": email}).Err()
 			if err == nil {
-				return true, nil 
+				return true, nil
 			} else if err != mongo.ErrNoDocuments {
 				return false, err
 			}
 		}
 	}
-	return false, nil 
+	return false, nil
 }
 
 func IsPhoneTaken(phone_number string) (bool, error) {
 	collections := []string{"users", "sellers", "admins"}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	for _, colName := range collections {
@@ -77,16 +74,15 @@ func IsPhoneTaken(phone_number string) (bool, error) {
 		if phone_number != "" {
 			err := collection.FindOne(ctx, bson.M{"phone_number": phone_number}).Err()
 			if err == nil {
-				return true, nil 
+				return true, nil
 			} else if err != mongo.ErrNoDocuments {
-				return false, err 
+				return false, err
 			}
 		}
 	}
-	return false, nil 
+	return false, nil
 }
 
-// Function generates reset tokens to reset the passwords.
 func GenerateResetToken(email, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"email": email,
@@ -99,7 +95,6 @@ func GenerateResetToken(email, role string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-// Function to fetch the respective collections by roles
 func getCollectionByRole(role string) *mongo.Collection {
 	switch role {
 	case "customer":
@@ -115,13 +110,12 @@ func getCollectionByRole(role string) *mongo.Collection {
 	}
 }
 
-// Function to update with new password after reset
 func ResetPassword(email, newPassword, role string) error {
 	collection := getCollectionByRole(role)
 	if collection == nil {
 		return errors.New("invalid role")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	hashedPassword, err := HashPassword(newPassword)
@@ -135,10 +129,9 @@ func ResetPassword(email, newPassword, role string) error {
 	return nil
 }
 
-// Function to fetch the user by email and password
 func GetUsers(page int) ([]User, int64, int, error) {
 	collection := config.DB.Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -147,11 +140,8 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	// pagination
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Skip:  &skip,
-		Limit: &limit,
-	})
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "fullname",Value: 1}})
+	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -164,10 +154,9 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	return users, totalCount, len(users), nil
 }
 
-// Function to fetch the seller by email and password
 func GetSellers(page int) ([]Seller, int64, int, error) {
 	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -193,10 +182,9 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	return sellers, totalCount, len(sellers), nil
 }
 
-// Function to fetch the admin by email and password
 func GetAdmins(page int) ([]Admin, int64, int, error) {
 	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -222,25 +210,24 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	return admins, totalCount, len(admins), nil
 }
 
-// Function to Register a new user
 func RegisterUser(user User) (interface{}, error) {
 	collection := config.DB.Collection("users")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	emailExist,err := IsEmailTaken(user.Email)
-	if emailExist{
-		return nil,errors.New("email already in use")
+	emailExist, err := IsEmailTaken(user.Email)
+	if emailExist {
+		return nil, errors.New("email already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
-	phoneExist,err := IsPhoneTaken(user.PhoneNumber)
-	if phoneExist{
-		return nil,errors.New("phone already in use")
+	phoneExist, err := IsPhoneTaken(user.PhoneNumber)
+	if phoneExist {
+		return nil, errors.New("phone already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
@@ -255,25 +242,24 @@ func RegisterUser(user User) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
-// Function to Register a new seller
 func RegisterSeller(seller Seller) (interface{}, error) {
 	collection := config.DB.Collection("sellers")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	emailExist,err := IsEmailTaken(seller.Email)
-	if emailExist{
-		return nil,errors.New("email already in use")
+	emailExist, err := IsEmailTaken(seller.Email)
+	if emailExist {
+		return nil, errors.New("email already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
-	phoneExist,err := IsPhoneTaken(seller.PhoneNumber)
-	if phoneExist{
-		return nil,errors.New("phone already in use")
+	phoneExist, err := IsPhoneTaken(seller.PhoneNumber)
+	if phoneExist {
+		return nil, errors.New("phone already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(seller.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -288,25 +274,24 @@ func RegisterSeller(seller Seller) (interface{}, error) {
 	return result.InsertedID, nil
 }
 
-// Function to Register a new admin
 func RegisterAdmin(admin Admin) (interface{}, error) {
 	collection := config.DB.Collection("admins")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	emailExist,err := IsEmailTaken(admin.Email)
-	if emailExist{
-		return nil,errors.New("email already in use")
+	emailExist, err := IsEmailTaken(admin.Email)
+	if emailExist {
+		return nil, errors.New("email already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
-	phoneExist,err := IsPhoneTaken(admin.PhoneNumber)
-	if phoneExist{
-		return nil,errors.New("phone already in use")
+	phoneExist, err := IsPhoneTaken(admin.PhoneNumber)
+	if phoneExist {
+		return nil, errors.New("phone already in use")
 	}
-	if err != nil{
-		return nil,err
+	if err != nil {
+		return nil, err
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(admin.Password), bcrypt.DefaultCost)

@@ -1,12 +1,6 @@
 
 //Updates Pending
--> Make Review collection to store the reviews and show the review with the particular products
--> User based Notification 
-->Review crud operations
-->Remove the password from the response.
-->show latest comment in the product view.
-->Update the products quantity after successful ordering.
--> after updating the stock quantity how it is updating itself with higher value
+
 
 
 //Learn
@@ -19,3 +13,4 @@
 ->cart
 ->Review
 ->Product
+->

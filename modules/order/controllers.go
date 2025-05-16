@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// Function to place the order
 func CheckoutHandler(c *fiber.Ctx) error {
 	var request CheckoutRequest
 	if err := c.BodyParser(&request); err != nil {
@@ -24,7 +23,7 @@ func CheckoutHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2006")
-	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s", order.ID.Hex()))
+	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s,\nUser ID: %s", order.ID.Hex(),userID.Hex()))
 	return c.JSON(fiber.Map{
 		"message":           "Order Placed Successfully",
 		"expected_delivery": deliveryDate,
@@ -32,17 +31,10 @@ func CheckoutHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to view placed orders
 func ViewOrdersHandler(c *fiber.Ctx) error {
-	var req ViewOrdersRequest
 	pageStr := c.Params("page")
-	if err := c.BodyParser(&req); err != nil {
-		return errors.BadRequestError(c, "Invalid request body")
-	}
-	if req.UserID == "" {
-		return errors.BadRequestError(c, "user_id is required")
-	}
-	userID, err := primitive.ObjectIDFromHex(req.UserID)
+	
+	userID, err := primitive.ObjectIDFromHex(c.Query("user_id"))
 	if err != nil {
 		return errors.BadRequestError(c, "Invalid user_id")
 	}
@@ -65,17 +57,12 @@ func ViewOrdersHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to cancel order
 func CancelOrderHandler(c *fiber.Ctx) error {
-	var req CancelOrderRequest
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "invalid request"})
-	}
-	orderID, err := primitive.ObjectIDFromHex(req.OrderID)
+	orderID, err := primitive.ObjectIDFromHex(c.Query("order_id"))
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid order ID"})
 	}
-	userID, err := primitive.ObjectIDFromHex(req.UserID)
+	userID, err := primitive.ObjectIDFromHex(c.Query("user_id"))
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "invalid user ID"})
 	}
@@ -87,14 +74,8 @@ func CancelOrderHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Order cancelled successfully. Refund will be initiated soon"})
 }
 
-// Function for return the order/products.
 func ReturnOrderHandler(c *fiber.Ctx) error {
-	var req ReturnRequest
-
-	if err := c.BodyParser(&req); err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
-	}
-	orderID, err := primitive.ObjectIDFromHex(req.OrderID)
+	orderID, err := primitive.ObjectIDFromHex(c.Query("order_id"))
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Invalid order ID"})
 	}
@@ -102,6 +83,6 @@ func ReturnOrderHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
-	websocket.CancelOrderNotification(fmt.Sprintf("Order Returned initiated now.\n Refund will be initiated after the product received.\nOrder ID: %s", orderID.Hex()))
+	websocket.CancelOrderNotification(fmt.Sprintf("Order Returned initiated now.\n Refund will be initiated after the product received.\nUser ID: %s", orderID.Hex()))
 	return c.JSON(fiber.Map{"message": "Order returned successfully"})
 }

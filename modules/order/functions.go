@@ -14,7 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// Function for placing order with the product details and price
 func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponCode string) (*Order, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1000*time.Second)
 	defer cancel()
@@ -111,16 +110,16 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 		}
 
 		StockQuantity := product.StockQuantity - item.Quantity
-		_, err = prodcollection.UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{	
+		_, err = prodcollection.UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{
 			"$set": bson.M{"stock_quantity": StockQuantity},
 		})
 		if err != nil {
 			return nil, fmt.Errorf("failed to update stock for product %v: %v", item.ProductID.Hex(), err)
 		}
-		// err = prodcollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("failed to fetch product details for stock update: %v", item.ProductID.Hex())
-		// }
+		err = prodcollection.FindOne(ctx, bson.M{"_id": item.ProductID}).Decode(&product)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch product details for stock update: %v", item.ProductID.Hex())
+		}
 		if product.StockQuantity == 0 {
 			_, err := prodcollection.UpdateOne(ctx, bson.M{"_id": item.ProductID}, bson.M{
 				"$set": bson.M{"visibility": false},
@@ -151,9 +150,8 @@ func PlaceOrder(userID, cartID primitive.ObjectID, paymentType, address, couponC
 	return order, nil
 }
 
-// Function for getting cart details by ID
 func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var cart cart.Cart
@@ -164,9 +162,8 @@ func GetCartByID(cartID primitive.ObjectID) (*cart.Cart, error) {
 	return &cart, nil
 }
 
-// Function for getting user details whos order is placed
 func GetUserDetails(userID primitive.ObjectID) (User, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var user User
@@ -174,10 +171,9 @@ func GetUserDetails(userID primitive.ObjectID) (User, error) {
 	return user, err
 }
 
-// Function for viewing all orders placed by the user
 func ViewAllOrders(userID primitive.ObjectID, page int) ([]Order, int64, int64, error) {
 	collection := config.DB.Collection("orders")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -209,9 +205,8 @@ func ViewAllOrders(userID primitive.ObjectID, page int) ([]Order, int64, int64, 
 	return orders, totalCount, totalPages, nil
 }
 
-// Function for Canceling an order
 func CancelOrder(orderID, userID primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	filter := bson.M{"_id": orderID, "user_id": userID}
@@ -226,9 +221,8 @@ func CancelOrder(orderID, userID primitive.ObjectID) error {
 	return nil
 }
 
-// Function for returning an order
 func ReturnOrder(orderID primitive.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var order Order

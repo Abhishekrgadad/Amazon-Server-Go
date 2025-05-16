@@ -17,7 +17,7 @@ import (
 
 func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var existingProduct Product
@@ -34,7 +34,7 @@ func AddProduct(product *Product) (*mongo.InsertOneResult, error) {
 
 func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objectID, err := primitive.ObjectIDFromHex(id)
@@ -55,7 +55,7 @@ func UpdateProduct(id string, product *Product) (*mongo.UpdateResult, error) {
 
 func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objectID, err := primitive.ObjectIDFromHex(id)
@@ -71,7 +71,7 @@ func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 
 func GetProducts(page int) ([]Product, int64, int, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -80,10 +80,8 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Skip:  &skip,
-		Limit: &limit,
-	})
+	opts := options.Find().SetSkip(skip).SetLimit(limit)
+	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
@@ -102,7 +100,7 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 
 func GetProductByID(id string) (*Product, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	objectID, err := primitive.ObjectIDFromHex(id)
@@ -122,7 +120,7 @@ func GetProductByID(id string) (*Product, error) {
 
 func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -148,7 +146,7 @@ func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 
 func GetInActiveProducts(page int) ([]Product, int64, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	limit := int64(10)
@@ -158,7 +156,7 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "name",Value: 1}})
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "name", Value: 1}})
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch products: %v", err)
@@ -174,7 +172,7 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 
 func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) ([]Product, error) {
 	collection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	filter := bson.M{"visibility": true}
@@ -195,8 +193,8 @@ func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) 
 		filter["price"] = bson.M{"$lte": maxPrice}
 	}
 	limit := int64(10)
-	opts := options.Find().SetSort(bson.D{{Key: "name",Value: 1}}).SetLimit(limit)
-	cursor, err := collection.Find(ctx, filter,opts)
+	opts := options.Find().SetSort(bson.D{{Key: "name", Value: 1}}).SetLimit(limit)
+	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		log.Printf("MongoDB Find error: %v", err)
 		return nil, fmt.Errorf("failed to query products")

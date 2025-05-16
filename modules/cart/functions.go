@@ -17,7 +17,7 @@ import (
 func AddToCart(userID primitive.ObjectID, items []CartItem) (*AddCartResponse, error) {
 	cartCollection := config.DB.Collection("cart")
 	productCollection := config.DB.Collection("products")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var cart Cart
@@ -89,7 +89,7 @@ func AddToCart(userID primitive.ObjectID, items []CartItem) (*AddCartResponse, e
 
 // Function to view the cart items
 func GetCart(userID string) (*CartResponse, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	cartCollection := config.DB.Collection("cart")
@@ -137,7 +137,7 @@ func GetCart(userID string) (*CartResponse, error) {
 // Function to update Cart details
 func UpdateCartItem(userID string, productID string, quantity int) error {
 	collection := config.DB.Collection("cart")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	userObjID, err := primitive.ObjectIDFromHex(userID)
@@ -167,7 +167,7 @@ func UpdateCartItem(userID string, productID string, quantity int) error {
 // Functino to Remove items from cart
 func RemoveCartItem(userID string, productID string) error {
 	collection := config.DB.Collection("cart")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	userObjID, err := primitive.ObjectIDFromHex(userID)
@@ -186,7 +186,7 @@ func RemoveCartItem(userID string, productID string) error {
 // Function to clear full cart from DB
 func ClearCart(userID string) error {
 	collection := config.DB.Collection("cart")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	userObjID, err := primitive.ObjectIDFromHex(userID)
 	if err != nil {
@@ -199,7 +199,7 @@ func ClearCart(userID string) error {
 // Function to fetch all cart records
 func GetAllCarts() ([]Cart, error) {
 	cartCollection := config.DB.Collection("cart")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	var carts []Cart
