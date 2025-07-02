@@ -118,7 +118,7 @@ func GetProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
-func GetActiveProducts(page int) ([]Product, int64, int64, error) {
+func GetActiveProducts(page int) ([]Productone, int64, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -130,14 +130,18 @@ func GetActiveProducts(page int) ([]Product, int64, int64, error) {
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	opts := options.Find().SetLimit(limit).SetSkip(skip)
+	projection := bson.M{
+		"id":   1,
+		"name": 1,
+	}
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetProjection(projection)
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
 
-	var products []Product
+	var products []Productone
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to parse product data: %v", err)
 	}

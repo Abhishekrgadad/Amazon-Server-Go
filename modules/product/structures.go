@@ -19,3 +19,9 @@ type Product struct {
 	CreatedAt      string             `json:"created_at" bson:"created_at"`
 	UpdatedAt      string             `json:"updated_at" bson:"updated_at"`
 }
+
+type Productone struct {
+	ID             primitive.ObjectID `bson:"_id,omitempty"`
+	Name           string             `json:"name" bson:"name" validate:"required"`
+}
+

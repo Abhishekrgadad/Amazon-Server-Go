@@ -57,7 +57,6 @@ func GetProductByIDHandler(c *fiber.Ctx) error {
 	return c.JSON(product)
 }
 
-// Function to update a product
 func UpdateProductHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	var product Product
@@ -74,7 +73,6 @@ func UpdateProductHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Product updated successfully"})
 }
 
-// Function to delete a product
 func DeleteProductHandler(c *fiber.Ctx) error {
 	id := c.Params("id")
 	_, err := DeleteProduct(id)
@@ -84,7 +82,6 @@ func DeleteProductHandler(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Product deleted successfully"})
 }
 
-// Function to get active products
 func GetActiveProductsHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
@@ -107,7 +104,6 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to get inactive products
 func GetInActiveProductsHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
 	page, err := strconv.Atoi(pageStr)
@@ -132,7 +128,6 @@ func GetInActiveProductsHandler(c *fiber.Ctx) error {
 	})
 }
 
-// Function to apply different filter products
 func FilterProductsHandler(c *fiber.Ctx) error {
 	name := c.Query("name")
 	category := c.Query("category")
