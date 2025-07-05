@@ -69,7 +69,7 @@ func DeleteProduct(id string) (*mongo.DeleteResult, error) {
 	return deleteResult, nil
 }
 
-func GetProducts(page int) ([]Product, int64, int, error) {
+func GetProducts(page int) ([]ProductResponse, int64, int, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -80,14 +80,25 @@ func GetProducts(page int) ([]Product, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	opts := options.Find().SetSkip(skip).SetLimit(limit)
+	Project := bson.M{
+		"_id":           0,
+		"name":          1,
+		"description":   1,
+		"price":         1,
+		"category":      1,
+		"brand":         1,
+		"averageRating": 1,
+		"totalReviews":  1,
+	}
+	opts := options.Find().SetSkip(skip).SetLimit(limit).SetProjection(Project)
+
 	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
 
-	var products []Product
+	var products []ProductResponse
 	if err = cursor.All(ctx, &products); err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to parse data: %v", err)
 	}
@@ -118,7 +129,7 @@ func GetProductByID(id string) (*Product, error) {
 	return &product, nil
 }
 
-func GetActiveProducts(page int) ([]Productone, int64, int64, error) {
+func GetActiveProducts(page int) ([]Product, int64, error) {
 	collection := config.DB.Collection("products")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -128,24 +139,32 @@ func GetActiveProducts(page int) ([]Productone, int64, int64, error) {
 	filter := bson.M{"visibility": true}
 	totalCount, err := collection.CountDocuments(ctx, filter)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to count products: %v", err)
+		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	projection := bson.M{
-		"id":   1,
-		"name": 1,
-	}
-	opts := options.Find().SetLimit(limit).SetSkip(skip).SetProjection(projection)
+	// projection := bson.M{
+	// 	"id":   0,
+		// "name":1,
+		// "description":1,
+		// "price":1,
+		// "brand":1,
+		// "averagerating":1,
+		// "totalreviews":1,
+		// "reviewcomments":1,
+		// "createdat":1,
+		// "updatedat":1,
+	// }
+	opts := options.Find().SetLimit(limit).SetSkip(skip)//.SetProjection(projection)
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to fetch products: %v", err)
+		return nil, 0, fmt.Errorf("failed to fetch products: %v", err)
 	}
 	defer cursor.Close(ctx)
 
-	var products []Productone
+	var products []Product
 	if err = cursor.All(ctx, &products); err != nil {
-		return nil, 0, 0, fmt.Errorf("failed to parse product data: %v", err)
+		return nil, 0, fmt.Errorf("failed to parse product data: %v", err)
 	}
-	return products, totalCount, limit, nil
+	return products, totalCount, nil
 }
 
 func GetInActiveProducts(page int) ([]Product, int64, error) {
@@ -160,7 +179,19 @@ func GetInActiveProducts(page int) ([]Product, int64, error) {
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to count products: %v", err)
 	}
-	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "name", Value: 1}})
+	// projection := bson.M{
+	// 	"id":   0,
+		// "name":1,
+		// "description":1,
+		// "price":1,
+		// "brand":1,
+		// "averagerating":1,
+		// "totalreviews":1,
+		// "reviewcomments":1,
+		// "createdat":1,
+		// "updatedat":1,
+	// }
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "name", Value: 1}})//.SetProjection(projection)
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to fetch products: %v", err)

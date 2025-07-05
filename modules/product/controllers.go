@@ -88,7 +88,7 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 	if err != nil || page <= 0 {
 		page = 1
 	}
-	products, totalCount, limit, err := GetActiveProducts(page)
+	products, totalCount, err := GetActiveProducts(page)
 	if err != nil {
 		return errors.InternalServerError(c, "Failed to fetch products")
 	}
@@ -99,7 +99,6 @@ func GetActiveProductsHandler(c *fiber.Ctx) error {
 		"products":    products,
 		"message":     "Active products",
 		"status":      "success",
-		"limit":       limit,
 		"total_count": totalCount,
 	})
 }
