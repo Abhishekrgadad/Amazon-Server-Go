@@ -20,8 +20,13 @@ type Product struct {
 	UpdatedAt      string             `json:"updated_at" bson:"updated_at"`
 }
 
-type Productone struct {
-	ID             primitive.ObjectID `bson:"_id,omitempty"`
+type ProductResponse struct {
 	Name           string             `json:"name" bson:"name" validate:"required"`
+	Description    string             `json:"description" bson:"description" validate:"required"`
+	Price          float64            `json:"price" bson:"price" validate:"required"`
+	Category       string             `json:"category" bson:"category" validate:"required"`
+	Brand          string             `json:"brand" bson:"brand" validate:"required"`
+	AverageRating  float64            `bson:"average_rating,omitempty" json:"average_rating,omitempty"`
+	TotalReviews   int                `bson:"total_reviews"`
+	ReviewComments []string           `bson:"review_comments,omitempty" json:"review_comments,omitempty"`
 }
-
