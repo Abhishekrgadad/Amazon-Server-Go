@@ -140,7 +140,10 @@ func GetUsers(page int) ([]User, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	opts := options.Find().SetLimit(limit).SetSkip(skip).SetSort(bson.D{{Key: "fullname",Value: 1}})
+	project := bson.M{
+		"password": 0, 
+	}
+	opts := options.Find().SetLimit(limit).SetSkip(skip).SetProjection(project).SetSort(bson.D{{Key: "fullname",Value: 1}})
 	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, 0, 0, err
@@ -165,11 +168,11 @@ func GetSellers(page int) ([]Seller, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	// pagination
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Skip:  &skip,
-		Limit: &limit,
-	})
+	project := bson.M{
+		"password": 0,
+	}
+	filter := options.Find().SetSkip(skip).SetLimit(limit).SetProjection(project)
+	cursor, err := collection.Find(ctx, bson.M{}, filter)
 	if err != nil {
 		return nil, 0, 0, err
 	}
@@ -193,11 +196,11 @@ func GetAdmins(page int) ([]Admin, int64, int, error) {
 	if err != nil {
 		return nil, 0, 0, err
 	}
-	// pagination
-	cursor, err := collection.Find(ctx, bson.M{}, &options.FindOptions{
-		Skip:  &skip,
-		Limit: &limit,
-	})
+	project := bson.M{
+		"password": 0,
+	}
+	filter := options.Find().SetSkip(skip).SetLimit(limit).SetProjection(project)
+	cursor, err := collection.Find(ctx, bson.M{},filter)
 	if err != nil {
 		return nil, 0, 0, err
 	}

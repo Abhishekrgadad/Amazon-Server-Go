@@ -82,13 +82,11 @@ func GetProducts(page int) ([]ProductResponse, int64, int, error) {
 	}
 	Project := bson.M{
 		"_id":           0,
-		"name":          1,
-		"description":   1,
-		"price":         1,
-		"category":      1,
-		"brand":         1,
-		"averageRating": 1,
-		"totalReviews":  1,
+		"stock_quantity": 0,
+		"visibility": 0,
+		"created_at": 0,
+		"updated_at": 0,
+		
 	}
 	opts := options.Find().SetSkip(skip).SetLimit(limit).SetProjection(Project)
 
@@ -228,7 +226,15 @@ func FilteredProducts(name, category, brand string, minPrice, maxPrice float64) 
 		filter["price"] = bson.M{"$lte": maxPrice}
 	}
 	limit := int64(10)
-	opts := options.Find().SetSort(bson.D{{Key: "name", Value: 1}}).SetLimit(limit)
+	Project := bson.M{
+		"_id":           0,
+		"stock_quantity": 0,
+		"visibility": 0,
+		"created_at": 0,
+		"updated_at": 0,
+		
+	}
+	opts := options.Find().SetSort(bson.D{{Key: "name", Value: 1}}).SetLimit(limit).SetProjection(Project)
 	cursor, err := collection.Find(ctx, filter, opts)
 	if err != nil {
 		log.Printf("MongoDB Find error: %v", err)
