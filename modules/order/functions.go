@@ -3,6 +3,7 @@ package order
 import (
 	"context"
 	"fmt"
+	"log"
 	"server/config"
 	"server/modules/cart"
 	"server/modules/coupons"
@@ -11,6 +12,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -241,4 +243,51 @@ func ReturnOrder(orderID primitive.ObjectID) error {
 		return fmt.Errorf("failed to update return status: %v", err)
 	}
 	return nil
+}
+
+func OrderStatus(orderID primitive.ObjectID) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	// var order Order
+	collection := config.DB.Collection("orders")
+
+	var raw bson.M
+	err := collection.FindOne(ctx, bson.M{"_id": orderID}).Decode(&raw)
+	if err != nil {
+		log.Println("Not found or error:", err)
+	} else {
+		log.Printf("Found raw order: %+v\n", raw)
+	}
+
+	if raw["status"].(string) == "Order Confirmed" {
+		go func() {
+			ctx = context.Background()
+
+			time.Sleep(1 * time.Minute)
+			updateStatus(ctx, collection, orderID, "Order Placed")
+
+			time.Sleep(1 * time.Minute)
+			updateStatus(ctx, collection, orderID, "Shipped")
+
+			time.Sleep(1 * time.Minute)
+			updateStatus(ctx, collection, orderID, "Checkout for Delivery")
+
+		}()
+	}
+
+}
+
+func updateStatus(ctx context.Context, collection *mongo.Collection, orderID primitive.ObjectID, status string) {
+
+	filter := bson.M{
+		"$set": bson.M{
+			"status":     status,
+			"updated_at": time.Now(),
+		},
+	}
+	_, err := collection.UpdateOne(ctx, bson.M{"_id": orderID}, filter)
+	if err != nil {
+		log.Println("Failed to update order status:", status)
+	}
 }

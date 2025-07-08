@@ -11,5 +11,5 @@ func SetupOrderRoutes(router fiber.Router) {
 	order.Get("/view", ViewOrdersHandler)
 	order.Post("/cancel", CancelOrderHandler)
 	order.Post("/return", ReturnOrderHandler)
-
+	order.Post("/status", CheckOrderStatusHandler)
 }

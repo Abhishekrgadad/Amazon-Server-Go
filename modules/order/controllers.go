@@ -1,13 +1,16 @@
 package order
 
 import (
+	
 	"fmt"
+	
 	"server/errors"
 	"server/modules/websocket"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -23,7 +26,7 @@ func CheckoutHandler(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
 	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2006")
-	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s,\nUser ID: %s", order.ID.Hex(),userID.Hex()))
+	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s,\nUser ID: %s", order.ID.Hex(), userID.Hex()))
 	return c.JSON(fiber.Map{
 		"message":           "Order Placed Successfully",
 		"expected_delivery": deliveryDate,
@@ -33,7 +36,7 @@ func CheckoutHandler(c *fiber.Ctx) error {
 
 func ViewOrdersHandler(c *fiber.Ctx) error {
 	pageStr := c.Params("page")
-	
+
 	userID, err := primitive.ObjectIDFromHex(c.Query("user_id"))
 	if err != nil {
 		return errors.BadRequestError(c, "Invalid user_id")
@@ -85,4 +88,19 @@ func ReturnOrderHandler(c *fiber.Ctx) error {
 	}
 	websocket.CancelOrderNotification(fmt.Sprintf("Order Returned initiated now.\n Refund will be initiated after the product received.\nUser ID: %s", orderID.Hex()))
 	return c.JSON(fiber.Map{"message": "Order returned successfully"})
+}
+
+func CheckOrderStatusHandler(c *fiber.Ctx) error {
+	orderIDParam := c.Query("order_id")
+	orderID, err := primitive.ObjectIDFromHex(orderIDParam)
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid order ID"})
+	}
+	
+	OrderStatus(orderID)
+	
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message":   "Order status updated successfully",
+		"success":   true,
+	})
 }
