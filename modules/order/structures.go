@@ -58,17 +58,3 @@ type User struct {
 	PhoneNumber     string `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
 	ShippingAddress string `json:"shipping_address" bson:"shipping_address"`
 }
-
-type StatusUpdate struct {
-	ID          primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	UserID      primitive.ObjectID `bson:"user_id" json:"user_id"`
-	Address     string             `bson:"address" json:"address"`
-	Items       interface{}       `bson:"items" json:"items"`
-	TotalPrice  float64            `bson:"total_price" json:"total_price"`
-	PaymentType string             `bson:"payment_type" json:"payment_type"`
-	CouponCode  string             `bson:"coupon_code" json:"coupon_code"`
-	Discount    float64            `bson:"discount" json:"discount"`
-	Status      string             `bson:"status" json:"status"`
-	UserDetails interface{}               `bson:"user_details" json:"user_details"`
-	CreatedAt   time.Time          `bson:"created_at" json:"created_at"`
-}

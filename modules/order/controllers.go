@@ -1,17 +1,20 @@
 package order
 
 import (
-	
+	"context"
 	"fmt"
-	
+
+	"server/config"
 	"server/errors"
 	"server/modules/websocket"
 	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	
+
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	
 )
 
 func CheckoutHandler(c *fiber.Ctx) error {
@@ -25,6 +28,7 @@ func CheckoutHandler(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": err.Error()})
 	}
+	OrderStatus(order.ID)
 	deliveryDate := time.Now().Add(48 * time.Hour).Format("02-Jan-2006")
 	websocket.SendOrderNotification(fmt.Sprintf("Order placed successfully!\n It will be delivered on time.\nOrder ID: %s,\nUser ID: %s", order.ID.Hex(), userID.Hex()))
 	return c.JSON(fiber.Map{
@@ -94,13 +98,20 @@ func CheckOrderStatusHandler(c *fiber.Ctx) error {
 	orderIDParam := c.Query("order_id")
 	orderID, err := primitive.ObjectIDFromHex(orderIDParam)
 	if err != nil {
-		return c.Status(400).JSON(fiber.Map{"error": "Invalid order ID"})
+		return  c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid order ID"})
 	}
+	ctx, cancel := context.WithTimeout(context.Background(),5*time.Second)
+	defer cancel()
 	
-	OrderStatus(orderID)
-	
+	var order Order
+	collection := config.DB.Collection("orders")
+	err = collection.FindOne(ctx,bson.M{"_id": orderID}).Decode(&order)
+	if err != nil {
+		return  c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Order not found"})
+	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"message":   "Order status updated successfully",
-		"success":   true,
+		"order_id": orderID.Hex(),
+		"status":   order.Status,
+		"success": true,
 	})
 }

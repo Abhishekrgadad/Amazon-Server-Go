@@ -232,7 +232,6 @@ func ReturnOrder(orderID primitive.ObjectID) error {
 	if err != nil {
 		return fmt.Errorf("order not found")
 	}
-
 	if order.Status != "Order Confirmed" && order.Status != "Delivered" {
 		return fmt.Errorf("order cannot be returned or return request is already done")
 	}
@@ -245,41 +244,37 @@ func ReturnOrder(orderID primitive.ObjectID) error {
 	return nil
 }
 
-func OrderStatus(orderID primitive.ObjectID) {
+func OrderStatus(orderID primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
-	// var order Order
 	collection := config.DB.Collection("orders")
-
-	var raw bson.M
-	err := collection.FindOne(ctx, bson.M{"_id": orderID}).Decode(&raw)
+	var order Order
+	err := collection.FindOne(ctx, bson.M{"_id": orderID}).Decode(&order)
 	if err != nil {
-		log.Println("Not found or error:", err)
-	} else {
-		log.Printf("Found raw order: %+v\n", raw)
+		return fmt.Errorf("order not found")
 	}
-
-	if raw["status"].(string) == "Order Confirmed" {
+	if order.Status == "Order Confirmed" {
 		go func() {
 			ctx = context.Background()
 
-			time.Sleep(1 * time.Minute)
+			time.Sleep(30 * time.Second)
 			updateStatus(ctx, collection, orderID, "Order Placed")
 
-			time.Sleep(1 * time.Minute)
+			time.Sleep(30 * time.Second)
 			updateStatus(ctx, collection, orderID, "Shipped")
 
-			time.Sleep(1 * time.Minute)
+			time.Sleep(30 * time.Second)
 			updateStatus(ctx, collection, orderID, "Checkout for Delivery")
+
+			time.Sleep(30 * time.Second)
+			updateStatus(ctx, collection, orderID, "Delivered Successfully")
 
 		}()
 	}
-
+	return nil
 }
 
 func updateStatus(ctx context.Context, collection *mongo.Collection, orderID primitive.ObjectID, status string) {
-
 	filter := bson.M{
 		"$set": bson.M{
 			"status":     status,
