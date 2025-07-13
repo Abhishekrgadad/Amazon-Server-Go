@@ -5,35 +5,54 @@ This project is a backend for an Amazon-like e-commerce platform, built using Go
 ## Project Structure
 
 ```
-go.mod
-go.sum
-index.html
+
 main.go
+    - Main function where the program starsts 
 config/
-  database.go
-  jwt.go
+    - Database and JWT configurations
+
 errors/
-  functions.go
-All modules follows the Below structure as auth
+    - defined errors to reuse
+
 modules/
   auth/
-    - Crud operations for Users, Sellers and Admin(single)
+    - CRUD operations for Users, Sellers and Admin(single)
     - Registeration Routes
     - Login Routes
     - Added Pagination
+
   cart/
+    - CRUD operations for Cart.
+    - View Cart Records.
+    - Clear Cart 
    
   coupons/
+    - CRUD operations for Coupons.
+    - View Coupons 
+    - Coupons Validation and Expiry.
    
   order/
+    - CRUD operations for Order product.
+    - Cancel and Return Simulation.
+    - Order Status after Checkout.
     
   product/
-    
+    - CRUD operations on Products.
+    - List Products with pagination.
+    - List Products which are in-stocks and out-off stocks.
+    - Filter Products based on Category, Price, Brand etc.
+
   review/
+    - CRUD operations on Review. 
+    - Listing Average Review and Comments.
     
   websocket/
+    - Functions to Trigger Notification alerts.
+    - Alerts after order placed and order cancelled.
+
 router/
-  router.go
+    - Group of particular module routes.
+    ...
 ```
 
 ## Getting Started
@@ -54,5 +73,6 @@ router/
 - Modular code structure for scalability
 
 ---
+## Development in Progress
 
 Feel free to contribute or open issues for improvements!
