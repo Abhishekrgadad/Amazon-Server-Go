@@ -16,7 +16,7 @@ errors/
 
 modules/
   auth/
-    - CRUD operations for Users, Sellers and Admin(single)
+    - CRUD operations for Users, Sellers and Admin
     - Registeration Routes
     - Login Routes
     - Added Pagination
@@ -68,7 +68,9 @@ router/
    ```
 
 ## Features
-- Authentication (JWT)
+- Authentication and Validation
+- Pagination and limit
+- Structured Response
 - Product, Cart, Order, Coupon, Review, and WebSocket modules
 - Modular code structure for scalability
 
