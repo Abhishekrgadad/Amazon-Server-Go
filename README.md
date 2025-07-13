@@ -72,7 +72,4 @@ router/
 - Product, Cart, Order, Coupon, Review, and WebSocket modules
 - Modular code structure for scalability
 
----
-## Development in Progress
-
 Feel free to contribute or open issues for improvements!
