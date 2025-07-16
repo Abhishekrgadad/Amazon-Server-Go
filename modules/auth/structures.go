@@ -9,6 +9,7 @@ type User struct {
 	PhoneNumber     string             `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
 	Password        string             `json:"password" bson:"password" validate:"required,min=6"`
 	ShippingAddress string             `json:"shipping_address" bson:"shipping_address"`
+	Role            string             `json:"role" bson:"role" validate:"required,oneof=customer seller admin"`
 }
 
 type Seller struct {
@@ -64,11 +65,11 @@ type AuthEntity interface {
 	GetPassword() string
 }
 
-func (u *User) GetID() primitive.ObjectID     { return u.ID }
-func (u *User) GetPassword() string           { return u.Password }
+func (u *User) GetID() primitive.ObjectID { return u.ID }
+func (u *User) GetPassword() string       { return u.Password }
 
-func (s *Seller) GetID() primitive.ObjectID   { return s.ID }
-func (s *Seller) GetPassword() string         { return s.Password }
+func (s *Seller) GetID() primitive.ObjectID { return s.ID }
+func (s *Seller) GetPassword() string       { return s.Password }
 
-func (a *Admin) GetID() primitive.ObjectID    { return a.ID }
-func (a *Admin) GetPassword() string          { return a.Password }
+func (a *Admin) GetID() primitive.ObjectID { return a.ID }
+func (a *Admin) GetPassword() string       { return a.Password }

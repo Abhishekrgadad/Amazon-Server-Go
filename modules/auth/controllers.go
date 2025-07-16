@@ -3,8 +3,8 @@ package auth
 import (
 	"context"
 	"fmt"
-	"server/config"
 	"server/errors"
+	"server/config"
 	"strconv"
 	"time"
 

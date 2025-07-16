@@ -3,14 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
-	"log"
 	"os"
 	"time"
 
 	"server/config"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -26,22 +24,22 @@ func ComparePassword(hashedPassword, password string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
 }
 
-func GenerateJWT(userID, email, role string) (string, error) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-	claims := jwt.MapClaims{
-		"user_id": userID,
-		"email":   email,
-		"role":    role,
-		"exp":     time.Now().Add(time.Hour * 24).Unix(),
-	}
+// func GenerateJWT(userID, email, role string) (string, error) {
+// 	err := godotenv.Load()
+// 	if err != nil {
+// 		log.Fatal("Error loading .env file")
+// 	}
+// 	claims := jwt.MapClaims{
+// 		"user_id": userID,
+// 		"email":   email,
+// 		"role":    role,
+// 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
+// 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	secret := os.Getenv("JWT_KEY")
-	return token.SignedString([]byte(secret))
-}
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+// 	secret := os.Getenv("JWT_KEY")
+// 	return token.SignedString([]byte(secret))
+// }
 
 func IsEmailTaken(email string) (bool, error) {
 	collections := []string{"users", "sellers", "admins"}
