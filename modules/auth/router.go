@@ -1,18 +1,35 @@
 package auth
 
 import (
+	// "server/config"
+
+	"server/config"
+
 	"github.com/gofiber/fiber/v2"
+	jwtware "github.com/gofiber/jwt/v3"
 )
 
 // SetupAuthRoutes - Defines auth routes
 func SetupAuthRoutes(router fiber.Router) {
 
 	// Customer Routes
-	users := router.Group("/users")
-	users.Get("/page:page", GetAllUsersHandler)
-	users.Get("/:id", GetUserHandler)
-	users.Put("/update/:id", UpdateUserHandler)
-	users.Delete("/delete/:id", DeleteUserHandler)
+	// users := router.Group("/users")
+	// users.Get("/page/:page", config.RequireRoles("user"),GetAllUsersHandler)
+	// // users.Get("/:id", GetUserHandler)
+	// users.Put("/update/:id", UpdateUserHandler)
+	// users.Delete("/delete/:id", DeleteUserHandler)
+
+	users := router.Group("/users", jwtware.New(jwtware.Config{
+	SigningKey:   []byte("secretkey"),
+	TokenLookup:  "header:Authorization",
+	AuthScheme:   "Bearer",
+	// ContextKey:   "user",
+}))
+
+users.Get("/page/:page", config.RequireRoles("user"), GetAllUsersHandler)
+users.Put("/update/:id", config.RequireRoles("user", "admin"), UpdateUserHandler)
+users.Delete("/delete/:id", config.RequireRoles("admin"), DeleteUserHandler)
+
 
 	// Seller Routes
 	sellers := router.Group("/sellers")

@@ -9,7 +9,7 @@ type User struct {
 	PhoneNumber     string             `json:"phone_number" bson:"phone_number" validate:"required,e164,len=13"`
 	Password        string             `json:"password" bson:"password" validate:"required,min=6"`
 	ShippingAddress string             `json:"shipping_address" bson:"shipping_address"`
-	Role            string             `json:"role" bson:"role" validate:"required,oneof=customer seller admin"`
+	Role            string             `json:"role" bson:"role" validate:"required,oneof=user seller admin"`
 }
 
 type Seller struct {

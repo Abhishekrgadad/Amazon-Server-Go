@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	// "go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -196,27 +196,27 @@ func GetAllUsersHandler(c *fiber.Ctx) error {
 	})
 }
 
-func GetUserHandler(c *fiber.Ctx) error {
-	id := c.Params("id")
-	collection := config.DB.Collection("users")
-	objID, err := primitive.ObjectIDFromHex(id)
-	if err != nil {
-		return errors.BadRequestError(c, "Invalid user ID")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+// func GetUserHandler(c *fiber.Ctx) error {
+// 	id := c.Params("id")
+// 	collection := config.DB.Collection("users")
+// 	objID, err := primitive.ObjectIDFromHex(id)
+// 	if err != nil {
+// 		return errors.BadRequestError(c, "Invalid user ID")
+// 	}
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
 
-	project := bson.M{
-		"password": 0,
-	}
-	opts := options.FindOne().SetProjection(project)
-	var user bson.M
-	err = collection.FindOne(ctx, bson.M{"_id": objID}, opts).Decode(&user)
-	if err != nil {
-		return errors.NotFoundError(c, "User not found")
-	}
-	return c.JSON(user)
-}
+// 	project := bson.M{
+// 		"password": 0,
+// 	}
+// 	opts := options.FindOne().SetProjection(project)
+// 	var user bson.M
+// 	err = collection.FindOne(ctx, bson.M{"_id": objID}, opts).Decode(&user)
+// 	if err != nil {
+// 		return errors.NotFoundError(c, "User not found")
+// 	}
+// 	return c.JSON(user)
+// }
 
 func UpdateUserHandler(c *fiber.Ctx) error {
 	id := c.Params("id")

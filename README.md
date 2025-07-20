@@ -9,7 +9,7 @@ This project is a backend for an Amazon-like e-commerce platform, built using Go
 main.go
     - Main function where the program starsts 
 config/
-    - Database and JWT configurations
+    - Database configurations
 
 errors/
     - defined errors to reuse
